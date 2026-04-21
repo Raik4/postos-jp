@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Postos Autorizados — Grupo João Pires</title>
+
+<!-- PWA -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Postos JP">
+<meta name="theme-color" content="#1a1a2e">
+<script>
+// Ícone SVG: camião + bomba de gasolina
+var iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="80" fill="#1a1a2e"/>
+  <!-- Bomba de gasolina -->
+  <rect x="60" y="120" width="160" height="220" rx="12" fill="#f5a623"/>
+  <rect x="80" y="145" width="120" height="70" rx="6" fill="#1a1a2e"/>
+  <rect x="180" y="200" width="40" height="12" rx="4" fill="#e94560"/>
+  <rect x="218" y="180" width="12" height="80" rx="4" fill="#e94560"/>
+  <circle cx="230" cy="165" r="18" fill="#e94560"/>
+  <rect x="85" y="270" width="110" height="8" rx="4" fill="#1a1a2e" opacity="0.4"/>
+  <rect x="85" y="288" width="80" height="8" rx="4" fill="#1a1a2e" opacity="0.4"/>
+  <!-- Camião -->
+  <rect x="240" y="230" width="210" height="110" rx="10" fill="#2980b9"/>
+  <rect x="350" y="190" width="100" height="80" rx="8" fill="#2980b9"/>
+  <rect x="358" y="200" width="84" height="55" rx="4" fill="#aed6f1"/>
+  <rect x="240" y="280" width="210" height="20" rx="4" fill="#1a4a7a"/>
+  <!-- Rodas camião -->
+  <circle cx="290" cy="355" r="32" fill="#333"/>
+  <circle cx="290" cy="355" r="18" fill="#666"/>
+  <circle cx="395" cy="355" r="32" fill="#333"/>
+  <circle cx="395" cy="355" r="18" fill="#666"/>
+  <!-- Chaminé -->
+  <rect x="355" y="165" width="14" height="30" rx="4" fill="#555"/>
+  <!-- Linha do chão -->
+  <rect x="40" y="385" width="430" height="8" rx="4" fill="#f5a623" opacity="0.5"/>
+</svg>`;
+var iconBlob = new Blob([iconSvg], {type:'image/svg+xml'});
+var iconUrl = URL.createObjectURL(iconBlob);
+
+// Apple touch icon
+var appleIcon = document.createElement('link');
+appleIcon.rel = 'apple-touch-icon';
+appleIcon.href = iconUrl;
+document.head.appendChild(appleIcon);
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    var swCode = [
+      'var VERSAO = "20260420163803";',
+      'self.addEventListener("install", function(e) { self.skipWaiting(); });',
+      'self.addEventListener("activate", function(e) { e.waitUntil(clients.claim()); });',
+      'self.addEventListener("fetch", function(e) { e.respondWith(fetch(e.request)); });'
+    ].join('\n');
+    var swBlob = new Blob([swCode], {type: 'application/javascript'});
+    var swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).then(function(reg) {
+      reg.update(); // Verifica atualização imediatamente
+    });
+  });
+}
+
+var manifestData = {
+  name: 'Postos Autorizados — Grupo João Pires',
+  short_name: 'Postos JP',
+  start_url: '.',
+  display: 'standalone',
+  background_color: '#1a1a2e',
+  theme_color: '#1a1a2e',
+  icons: [{
+    src: iconUrl,
+    sizes: '512x512',
+    type: 'image/svg+xml'
+  }]
+};
+var blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+var manifestUrl = URL.createObjectURL(blob);
+var link = document.createElement('link');
+link.rel = 'manifest';
+link.href = manifestUrl;
+document.head.appendChild(link);
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; width:100%; font-family:Arial,sans-serif; background:#0d0d0d; color:#f0f0f0; }
+body { overflow:hidden; }
+
+#mapa { width:100%; height:100vh; background:#1a1a2e; }
+
+#header {
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  background:#1a1a2e; border-bottom:2px solid #e94560;
+  padding:8px 12px; display:flex; align-items:center; gap:10px;
+  flex-wrap:wrap; box-shadow:0 2px 12px rgba(0,0,0,0.5);
+}
+.logo { font-size:18px; font-weight:700; letter-spacing:1px; white-space:nowrap; }
+.logo span { color:#e94560; }
+.sep { width:2px; height:28px; background:#0f3460; }
+.fg { display:flex; align-items:center; gap:5px; }
+.fg label { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#8892a4; }
+select {
+  background:#0f3460; color:#f0f0f0; border:1px solid #2a4a7f;
+  border-radius:5px; padding:5px 8px; font-size:12px; min-width:130px;
+  outline:none; cursor:pointer;
+}
+#contador { margin-left:auto; font-size:13px; color:#8892a4; white-space:nowrap; }
+#contador b { color:#f5a623; font-size:16px; }
+
+#btn-emerg {
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:1000;
+  background:#e94560; color:#fff; border:none; border-radius:28px;
+  padding:12px 20px; font-size:13px; font-weight:700;
+  letter-spacing:1px; text-transform:uppercase; cursor:pointer;
+  box-shadow:0 4px 18px rgba(233,69,96,0.55);
+  display:flex; align-items:center; gap:8px; white-space:nowrap;
+}
+
+#legenda {
+  position:fixed; bottom:20px; right:10px; z-index:1000;
+  background:rgba(22,33,62,0.95); border:1px solid #0f3460;
+  border-radius:10px; padding:10px 14px; font-size:12px;
+}
+.leg-t { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#8892a4; margin-bottom:5px; }
+.leg-i { display:flex; align-items:center; gap:6px; margin:3px 0; }
+.leg-d { width:10px; height:10px; border-radius:50%; }
+
+#overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.8); z-index:3000;
+  align-items:center; justify-content:center; padding:14px;
+}
+#overlay.ativo { display:flex; }
+#modal {
+  background:#16213e; border:1px solid #0f3460; border-top:3px solid #e94560;
+  border-radius:12px; padding:22px 18px; width:100%; max-width:400px;
+  position:relative; max-height:90vh; overflow-y:auto;
+}
+#modal h2 { font-size:17px; font-weight:700; margin-bottom:4px; }
+#modal .sub { font-size:12px; color:#8892a4; margin-bottom:16px; }
+.cg { margin-bottom:12px; position:relative; }
+.cg label { display:block; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#8892a4; margin-bottom:5px; }
+.cg input {
+  width:100%; background:#0f3460; border:1px solid #2a4a7f;
+  border-radius:6px; padding:9px 11px; color:#f0f0f0; font-size:14px; outline:none;
+}
+.cg input:focus { border-color:#f5a623; }
+
+.sug-lista {
+  position:absolute; left:0; right:0;
+  background:#16213e; border:1px solid #2a4a7f; border-top:none;
+  border-radius:0 0 6px 6px; z-index:4000;
+  max-height:150px; overflow-y:auto; display:none;
+}
+.sug-lista.vis { display:block; }
+.sug-item { padding:8px 11px; font-size:13px; cursor:pointer; border-bottom:1px solid #1a2a4a; }
+
+#btn-calc {
+  width:100%; background:#f5a623; color:#000; border:none;
+  border-radius:6px; padding:11px; font-size:14px; font-weight:700;
+  letter-spacing:1px; text-transform:uppercase; cursor:pointer; margin-top:4px;
+}
+#btn-calc:disabled { opacity:0.5; }
+#btn-fechar { position:absolute; top:10px; right:12px; background:none; border:none; color:#8892a4; font-size:18px; cursor:pointer; }
+
+#msg-erro {
+  display:none; background:rgba(233,69,96,0.15); border:1px solid #e94560;
+  border-radius:5px; padding:8px 11px; font-size:13px; color:#e94560; margin-top:10px;
+}
+#toggle-autoestrada {
+  display:flex; align-items:center; gap:10px;
+  background:#0f3460; border:1px solid #2a4a7f; border-radius:6px;
+  padding:9px 12px; margin-bottom:10px; cursor:pointer; user-select:none;
+}
+#toggle-autoestrada input { cursor:pointer; width:16px; height:16px; accent-color:#f5a623; }
+#toggle-autoestrada label { font-size:13px; color:#f0f0f0; cursor:pointer; }
+
+/* CLUSTERS A AZUL */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+  background-color: rgba(41,128,185,0.5) !important;
+}
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+  background-color: rgba(41,128,185,0.85) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+/* WAYPOINTS */
+#waypoints-wrap { margin-bottom:6px; }
+.wp-row {
+  display:flex; align-items:center; gap:6px; margin-bottom:8px; position:relative;
+}
+.wp-row input {
+  flex:1; background:#0f3460; border:1px solid #2a4a7f;
+  border-radius:6px; padding:9px 11px; color:#f0f0f0; font-size:14px; outline:none;
+}
+.wp-row input:focus { border-color:#f5a623; }
+.wp-sug {
+  position:absolute; left:0; right:34px; top:100%;
+  background:#16213e; border:1px solid #2a4a7f; border-top:none;
+  border-radius:0 0 6px 6px; z-index:4000;
+  max-height:130px; overflow-y:auto; display:none;
+}
+.wp-sug.vis { display:block; }
+.wp-sug .sug-item { padding:7px 10px; font-size:13px; cursor:pointer; border-bottom:1px solid #1a2a4a; }
+.btn-rm-wp {
+  background:#e94560; border:none; border-radius:5px;
+  color:#fff; width:28px; height:36px; cursor:pointer;
+  font-size:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+}
+#btn-add-wp {
+  background:none; border:1px dashed #2a4a7f; border-radius:6px;
+  color:#8892a4; width:100%; padding:7px; font-size:12px;
+  cursor:pointer; margin-bottom:10px; text-align:center;
+}
+#btn-add-wp:hover { border-color:#f5a623; color:#f5a623; }
+
+/* POPUP DE BOAS-VINDAS */
+#welcome-overlay {
+  display:flex; position:fixed; inset:0;
+  background:rgba(0,0,0,0.72); z-index:6000;
+  align-items:center; justify-content:center; padding:20px;
+}
+#welcome-box {
+  background:#16213e; border:1px solid #0f3460;
+  border-top:4px solid #2980b9;
+  border-radius:14px; padding:28px 22px;
+  width:100%; max-width:400px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.7);
+  text-align:center;
+}
+#welcome-box .w-icon { font-size:36px; margin-bottom:12px; }
+#welcome-box h3 {
+  font-size:17px; font-weight:700; color:#f0f0f0;
+  margin-bottom:14px; line-height:1.4;
+}
+#welcome-box .w-msg {
+  background:#0f3460; border-radius:8px; padding:16px;
+  font-size:14px; color:#f0f0f0; line-height:1.7;
+  margin-bottom:18px; text-align:left;
+}
+#welcome-box .btn-welcome {
+  width:100%; background:#2980b9; color:#fff; border:none;
+  border-radius:8px; padding:12px;
+  font-size:14px; font-weight:700; cursor:pointer;
+  letter-spacing:1px; text-transform:uppercase;
+}
+
+/* POPUP AUTO-DISMISS (filtros) */
+#hint-popup {
+  display:none; position:fixed;
+  top:60px; left:50%; transform:translateX(-50%);
+  z-index:6000;
+  background:#1a1a2e; border:1px solid #2a4a7f;
+  border-left:4px solid #f5a623;
+  border-radius:10px; padding:14px 16px;
+  max-width:280px; width:90%;
+  box-shadow:0 6px 20px rgba(0,0,0,0.5);
+  animation: fadeInOut 5s ease forwards;
+}
+#hint-popup .hint-icon { font-size:22px; margin-bottom:6px; }
+#hint-popup p {
+  font-size:13px; color:#f0f0f0; line-height:1.5; margin:0;
+}
+#hint-popup p b { color:#f5a623; }
+
+/* POPUP ATENÇÃO (após selecionar empresa/serviço) */
+#atencao-popup {
+  display:none; position:fixed;
+  bottom:90px; left:50%; transform:translateX(-50%);
+  z-index:6000;
+  background:#e94560; color:#fff;
+  border-radius:10px; padding:10px 20px;
+  box-shadow:0 4px 18px rgba(233,69,96,0.5);
+  text-align:center; white-space:nowrap;
+  animation: fadeInOut 5s ease forwards;
+}
+#atencao-popup span {
+  font-size:14px; font-weight:700; letter-spacing:1px;
+}
+#atencao-popup .seta {
+  display:block; font-size:20px;
+  animation: bounce 0.6s infinite alternate;
+}
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to   { transform: translateY(5px); }
+}
+
+@keyframes fadeInOut {
+  0%   { opacity:0; transform:translateY(-6px); }
+  15%  { opacity:1; transform:translateY(0); }
+  80%  { opacity:1; }
+  100% { opacity:0; }
+}
+@keyframes fadeInOutUp {
+  0%   { opacity:0; transform:translateX(-50%) translateY(6px); }
+  15%  { opacity:1; transform:translateX(-50%) translateY(0); }
+  80%  { opacity:1; }
+  100% { opacity:0; }
+}
+
+/* CAIXA DE MENSAGEM DO POSTO ALTERNATIVO */
+#msg-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.6); z-index:5000;
+  align-items:center; justify-content:center; padding:20px;
+}
+#msg-overlay.ativo { display:flex; }
+#msg-box {
+  background:#16213e; border:1px solid #0f3460;
+  border-top:4px solid #f5a623;
+  border-radius:14px; padding:24px 20px;
+  width:100%; max-width:380px; position:relative;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);
+}
+#msg-box .msg-icon {
+  font-size:32px; text-align:center; margin-bottom:10px;
+}
+#msg-box h3 {
+  font-size:16px; font-weight:700; color:#f5a623;
+  margin-bottom:6px; text-align:center;
+}
+#msg-box .msg-posto {
+  font-size:13px; color:#8892a4; text-align:center;
+  margin-bottom:14px;
+}
+#msg-box .msg-texto {
+  background:#0f3460; border-radius:8px; padding:14px;
+  font-size:14px; color:#f0f0f0; line-height:1.6;
+  text-align:center;
+}
+#msg-box .btn-msg-fechar {
+  width:100%; margin-top:16px;
+  background:#f5a623; color:#000; border:none;
+  border-radius:8px; padding:11px;
+  font-size:14px; font-weight:700; cursor:pointer;
+  letter-spacing:1px; text-transform:uppercase;
+}
+
+.leaflet-popup-content-wrapper { background:#16213e !important; color:#f0f0f0 !important; border-radius:8px !important; }
+.leaflet-popup-tip { background:#16213e !important; }
+.pop-titulo { font-size:14px; font-weight:700; border-bottom:2px solid #e94560; padding-bottom:4px; margin-bottom:6px; }
+.pop-linha { font-size:12px; color:#b0bec5; margin:3px 0; }
+.pop-linha b { color:#f0f0f0; }
+.pop-badge { display:inline-block; padding:2px 6px; border-radius:10px; font-size:10px; font-weight:700; text-transform:uppercase; }
+.pop-gmaps { display:block; text-align:center; background:#e94560; color:#fff; padding:6px; text-decoration:none; border-radius:5px; font-weight:700; font-size:12px; margin-top:8px; }
+.pop-oculto { background:rgba(245,166,35,0.2); border:1px solid #f5a623; color:#f5a623; text-align:center; padding:3px 6px; border-radius:4px; font-size:11px; font-weight:700; margin-bottom:6px; letter-spacing:1px; }
+
+@media (max-width:600px) {
+  select { min-width:110px; font-size:11px; }
+  #btn-emerg { font-size:11px; padding:10px 14px; }
+  #legenda { display:none; }
+}
+</style>
+</head>
+<body>
+
+<div id="mapa"></div>
+
+<div id="header">
+  <div class="logo">GRUPO <span>JOÃO PIRES</span></div>
+  <div class="sep"></div>
+  <div class="fg">
+    <label>Empresa</label>
+    <select id="sel-empresa" onchange="filtrarMapa()">
+      <option value="">— Seleciona —</option>
+      <option value="joaoPiresPt">João Pires PT</option>
+      <option value="loartrans">Loartrans</option>
+      <option value="joaoPiresEs">João Pires ES</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Serviço</label>
+    <select id="sel-servico" onchange="filtrarMapa()">
+      <option value="">— Seleciona —</option>
+      <option value="internacional">Internacional</option>
+      <option value="iberico">Ibérico</option>
+      <option value="nacional">Nacional</option>
+    </select>
+  </div>
+  <div id="contador"><b id="num-postos">0</b> postos</div>
+</div>
+
+<button id="btn-emerg" onclick="abrirModal()">
+  <i class="fa fa-triangle-exclamation"></i> Não passo em nenhum posto autorizado
+</button>
+
+<div id="legenda">
+  <div class="leg-t">Prioridade</div>
+  <div class="leg-i"><div class="leg-d" style="background:#27ae60"></div> Verde (Alta)</div>
+  <div class="leg-i"><div class="leg-d" style="background:#2980b9"></div> Azul (Média)</div>
+  <div class="leg-i"><div class="leg-d" style="background:#e74c3c"></div> Vermelho (Baixa)</div>
+  <div class="leg-i"><div class="leg-d" style="background:#f39c12"></div> Laranja</div>
+</div>
+
+<!-- POPUP DE BOAS-VINDAS -->
+<div id="welcome-overlay">
+  <div id="welcome-box">
+    <div class="w-icon">ℹ️</div>
+    <h3>Informação Importante</h3>
+    <div class="w-msg">
+      🔵 <b>AdBlue</b> deve ser atestado sempre no Parque em <b>Cerveira</b> ou <b>Bragança</b>.
+    </div>
+    <button class="btn-welcome" onclick="fecharWelcome()">Entendido</button>
+  </div>
+</div>
+
+<!-- POPUP AUTO-DISMISS -->
+<div id="hint-popup">
+  <div class="hint-icon">👆</div>
+  <p>Seleciona a <b>Empresa</b> e o <b>Serviço</b> para ver os postos autorizados.</p>
+</div>
+
+<!-- POPUP ATENÇÃO BOTÃO EMERGÊNCIA -->
+<div id="atencao-popup">
+  <span>⚠ Atenção</span>
+  <span class="seta">▼</span>
+</div>
+
+<!-- BOTÃO INSTALAR PWA -->
+<div id="install-banner" style="display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:2000; background:#27ae60; color:#fff; border-radius:28px; padding:12px 22px; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; box-shadow:0 4px 18px rgba(39,174,96,0.55); display:none; align-items:center; gap:8px; white-space:nowrap;" onclick="instalarApp()">
+  <i class="fa fa-download"></i> Instalar App no telemóvel
+</div>
+
+<!-- CAIXA DE MENSAGEM AUTOMÁTICA -->
+<div id="msg-overlay">
+  <div id="msg-box">
+    <div class="msg-icon">⚠️</div>
+    <h3>Atenção</h3>
+    <div class="msg-posto" id="msg-posto-nome"></div>
+    <div class="msg-texto" id="msg-texto-conteudo"></div>
+    <button class="btn-msg-fechar" onclick="fecharMsgOverlay()">Entendido</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div id="modal">
+    <button id="btn-fechar" onclick="fecharModal()"><i class="fa fa-xmark"></i></button>
+    <h2><i class="fa fa-route" style="color:#f5a623;margin-right:6px;"></i>Definir Trajeto</h2>
+    <p class="sub">Introduz origem e destino. Podes adicionar até 2 pontos intermédios para forçar a rota.</p>
+    <div class="cg">
+      <label><i class="fa fa-location-dot"></i> Origem</label>
+      <input type="text" id="input-origem" placeholder="Ex: Porto, Santander..."/>
+      <div id="sug-origem" class="sug-lista"></div>
+    </div>
+
+    <div id="waypoints-wrap"></div>
+    <button id="btn-add-wp" onclick="adicionarWaypoint()" style="display:block;">
+      <i class="fa fa-plus"></i> Adicionar ponto intermédio
+    </button>
+
+    <div class="cg">
+      <label><i class="fa fa-flag-checkered"></i> Destino</label>
+      <input type="text" id="input-destino" placeholder="Ex: Madrid, Toulouse..."/>
+      <div id="sug-destino" class="sug-lista"></div>
+    </div>
+    <button id="btn-calc" onclick="calcularTrajeto()">
+      <i class="fa fa-magnifying-glass"></i> Encontrar Postos
+    </button>
+    <div id="toggle-autoestrada">
+      <input type="checkbox" id="chk-autoestrada"/>
+      <label for="chk-autoestrada"><i class="fa fa-ban" style="color:#e94560;margin-right:4px;"></i> Evitar estradas com portagem</label>
+    </div>
+    <div id="msg-erro"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+// Aguardar que TUDO esteja carregado (HTML + scripts externos)
+window.addEventListener('load', function() {
+
+if (typeof L === 'undefined') {
+  document.body.innerHTML = '<div style="padding:20px;color:red;font-family:monospace;">❌ Leaflet não carregou. Verifica a tua ligação à internet ou tenta recarregar a página.</div>';
+  return;
+}
+
+var POSTOS_VISIVEIS = [{"posto": "Galp Ziordia", "direcao": "A-1, Pk 392,000, 31809 Ziordia", "lat": 42.86477, "lon": -2.23574, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": true, "nacional": false}, {"posto": "Galp Alsasua", "direcao": "Autov. A-1, Pk 401,000 Md, 31800 Alsasua", "lat": 42.91505, "lon": -2.19816, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": true, "nacional": false}, {"posto": "Galp Medina del Campo", "direcao": "A6, Pk 165, Medina del Campo", "lat": 41.35519, "lon": -4.95867, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}, {"posto": "Galp Monegros", "direcao": "AP-2, PK 85,5, Candasnos", "lat": 41.51804, "lon": 0.04198, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}, {"posto": "Galp Jonqueira-Tramuntana", "direcao": "N-2, Pk 774, La Jonquera", "lat": 42.41039, "lon": 2.87614, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "Galp Badajoz", "direcao": "Av. Adolfo Díaz Ambrona 60, Badajoz", "lat": 38.88372, "lon": -6.9904, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}, {"posto": "Galp Aldhuela de la Boveda", "direcao": "A62 Salida 275, Aldehuela de la Bóveda", "lat": 40.84674, "lon": -6.05006, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}, {"posto": "IDS Irún", "direcao": "PI Arazo Erreka, Irún", "lat": 43.32575, "lon": -1.83621, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "IDS Beriain", "direcao": "PI Morea Norte, Beriain", "lat": 42.73405, "lon": -1.63493, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": true, "nacional": false}, {"posto": "AS24 Bordéus", "direcao": "Bordéus", "lat": 44.91413, "lon": -0.48748, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Narbonne", "direcao": "Narbonne", "lat": 43.16306, "lon": 2.98582, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Epinal", "direcao": "Épinal", "lat": 48.22179, "lon": 6.43103, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Roye", "direcao": "Roye", "lat": 49.70837, "lon": 2.76408, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Laon", "direcao": "Laon", "lat": 49.571, "lon": 3.65434, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Le Mans", "direcao": "Champagne", "lat": 48.01579, "lon": 0.33483, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Strasbourg", "direcao": "Reichstett", "lat": 48.66375, "lon": 7.76504, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Troyes", "direcao": "La Chapelle St Luc", "lat": 48.31537, "lon": 4.02712, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Souterraine", "direcao": "St Maurice", "lat": 46.20339, "lon": 1.39043, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Sevrey", "direcao": "Sevrey", "lat": 46.746, "lon": 4.85088, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Montmarault", "direcao": "Montmarault", "lat": 46.32242, "lon": 2.96374, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Pagny Sur Meuse", "direcao": "Pagny sur Meuse", "lat": 48.68403, "lon": 5.73471, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Lyon", "direcao": "St Quentin Fallavier", "lat": 45.66213, "lon": 5.10684, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Orleáns", "direcao": "Saran", "lat": 47.94979, "lon": 1.84388, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Bonneville", "direcao": "Bonneville", "lat": 46.06589, "lon": 6.41279, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Chalon en Champagne", "direcao": "Chalons en Champagne", "lat": 49.03718, "lon": 4.3222, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "Parque - Cerveira", "direcao": "ZI, R. do Polo 2, 4920-012 Vila Nova de Cerveira", "lat": 41.967, "lon": -8.68636, "prioridade": "verde", "joaoPiresPt": true, "loartrans": false, "joaoPiresEs": false, "internacional": false, "iberico": false, "nacional": true}];
+var POSTOS_OCULTOS  = [{"posto": "MLC Burutain", "direcao": "N-121-A, PK 17, 380, 31798 Burutain", "lat": 42.93182, "lon": -1.60889, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false, "mensagem": "Se for no sentido França pode atestar.", "maisBárato": false}, {"posto": "Parque - Cerveira", "direcao": "ZI, R. do Polo 2, 4920-012 Vila Nova de Cerveira", "lat": 41.967, "lon": -8.68636, "prioridade": "verde", "joaoPiresPt": true, "loartrans": false, "joaoPiresEs": false, "internacional": false, "iberico": false, "nacional": true, "mensagem": "Deve abastecer o minímo até um posto autorizado.", "maisBárato": false}, {"posto": "IDS - Sertui", "direcao": "Calle Pontenova, 24 B, 36720 Guillarei Tui", "lat": 42.06962, "lon": -8.63183, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": false, "nacional": true, "mensagem": "Deve abastecer o minímo até um posto autorizado.", "maisBárato": false}, {"posto": "IDS Benavente", "direcao": "P. Tecnológico de Benavente, C/ Vila Real, E-49600 Benavente", "lat": 42.00599, "lon": -5.66385, "prioridade": "vermelho", "joaoPiresPt": false, "loartrans": false, "joaoPiresEs": false, "internacional": false, "iberico": false, "nacional": false, "mensagem": "Deve abastecer o minímo até um posto autorizado.", "maisBárato": false}, {"posto": "Moeve Ponteareas", "direcao": "A52 km 290, 36862 Ponteares", "lat": 42.14535, "lon": -8.47633, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false, "mensagem": "Podem atestar no Serviço de Bragança x Vigo, fora isso sempre o mínimo até um posto autorizado.", "maisBárato": false}];
+
+// MAPA
+var mapa = L.map('mapa', {zoomControl:false}).setView([40.0,-4.0],6);
+L.control.zoom({position:'bottomleft'}).addTo(mapa);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{
+  attribution:'© Esri © OpenStreetMap',
+  maxZoom:19
+}).addTo(mapa);
+
+setTimeout(function(){mapa.invalidateSize();},100);
+setTimeout(function(){mapa.invalidateSize();},800);
+window.addEventListener('resize',function(){mapa.invalidateSize();});
+
+// ÍCONES
+var CORES = {verde:'#27ae60',azul:'#2980b9',vermelho:'#e74c3c',amarelo:'#f39c12',laranja:'#f39c12'};
+
+function criarIcone(prioridade, especial) {
+  var cor = especial ? '#f5a623' : (CORES[prioridade]||'#2980b9');
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">'
+    + '<path d="M15 0C6.7 0 0 6.7 0 15c0 9.4 15 25 15 25S30 24.4 30 15C30 6.7 23.3 0 15 0z" fill="'+cor+'"/>'
+    + '<circle cx="15" cy="15" r="6" fill="white"/>'
+    + (especial ? '<circle cx="24" cy="6" r="6" fill="#e94560"/><text x="24" y="10" text-anchor="middle" font-size="9" fill="white" font-weight="bold">!</text>' : '')
+    + '</svg>';
+  return L.divIcon({html:svg,iconSize:[30,40],iconAnchor:[15,40],popupAnchor:[0,-42],className:''});
+}
+
+function criarPopup(p, especial) {
+  var cor = CORES[p.prioridade]||'#2980b9';
+  var gmaps = 'https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lon;
+  return '<div style="width:200px;">'
+    +(especial?'<div class="pop-oculto">⚠ POSTO ALTERNATIVO</div>':'')
+    +'<div class="pop-titulo">'+p.posto+'</div>'
+    +'<div class="pop-linha"><b>Morada:</b> '+p.direcao+'</div>'
+    +'<div class="pop-linha"><b>Prioridade:</b> <span class="pop-badge" style="background:'+cor+'22;color:'+cor+';border:1px solid '+cor+'">'+p.prioridade.toUpperCase()+'</span></div>'
+    +'<a href="'+gmaps+'" target="_blank" class="pop-gmaps">📍 Google Maps</a>'
+    +'</div>';
+}
+
+// CLUSTER
+var cluster = L.markerClusterGroup({maxClusterRadius:50});
+mapa.addLayer(cluster);
+var marcadoresOcultos = [];
+
+function limparRota() {
+  marcadoresOcultos.forEach(function(m){mapa.removeLayer(m);});
+  marcadoresOcultos = [];
+}
+
+function filtrarMapa() {
+  var empresa = document.getElementById('sel-empresa').value;
+  var servico = document.getElementById('sel-servico').value;
+  cluster.clearLayers();
+  limparRota();
+  if (!empresa||!servico) { document.getElementById('num-postos').textContent='0'; return; }
+  var filtrados = POSTOS_VISIVEIS.filter(function(p){return p[empresa]&&p[servico];});
+  filtrados.forEach(function(p){
+    var m = L.marker([p.lat,p.lon],{icon:criarIcone(p.prioridade,false)});
+    m.bindPopup(criarPopup(p,false),{maxWidth:230});
+    m.bindTooltip(p.posto,{direction:'top',offset:[0,-42]});
+    cluster.addLayer(m);
+  });
+  document.getElementById('num-postos').textContent = filtrados.length;
+  if (filtrados.length>0) mapa.fitBounds(L.latLngBounds(filtrados.map(function(p){return[p.lat,p.lon];})),{padding:[40,40]});
+
+  // Mostrar popup de atenção por 5 segundos
+  var ap = document.getElementById('atencao-popup');
+  ap.style.display = 'block';
+  ap.style.animation = 'none';
+  ap.offsetHeight; // forçar reflow
+  ap.style.animation = 'fadeInOutUp 5s ease forwards';
+  setTimeout(function(){ ap.style.display='none'; }, 5000);
+}
+
+// PWA INSTALL
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  var banner = document.getElementById('install-banner');
+  banner.style.display = 'flex';
+  // Esconder automaticamente após 10 segundos
+  setTimeout(function() { banner.style.display = 'none'; }, 10000);
+});
+
+function instalarApp() {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(result) {
+    if(result.outcome === 'accepted') {
+      document.getElementById('install-banner').style.display = 'none';
+    }
+    deferredPrompt = null;
+  });
+}
+
+window.addEventListener('appinstalled', function() {
+  document.getElementById('install-banner').style.display = 'none';
+  deferredPrompt = null;
+});
+
+// POPUP DE BOAS-VINDAS
+function fecharWelcome() {
+  document.getElementById('welcome-overlay').style.display='none';
+  // Mostrar segundo popup após 400ms
+  setTimeout(function(){
+    var hint = document.getElementById('hint-popup');
+    hint.style.display = 'block';
+    // Remover após 3 segundos
+    setTimeout(function(){ hint.style.display='none'; }, 5000);
+  }, 400);
+}
+
+// CAIXA DE MENSAGEM AUTOMÁTICA
+var filaMensagens = [];
+function mostrarMsgOverlay(posto, mensagem) {
+  document.getElementById('msg-posto-nome').textContent = posto;
+  document.getElementById('msg-texto-conteudo').textContent = mensagem;
+  document.getElementById('msg-overlay').classList.add('ativo');
+}
+function fecharMsgOverlay() {
+  document.getElementById('msg-overlay').classList.remove('ativo');
+  // Mostrar próxima mensagem na fila se existir
+  if(filaMensagens.length > 0) {
+    var prox = filaMensagens.shift();
+    setTimeout(function(){ mostrarMsgOverlay(prox.posto, prox.mensagem); }, 300);
+  }
+}
+
+// MODAL
+function abrirModal() {
+  document.getElementById('overlay').classList.add('ativo');
+  document.getElementById('msg-erro').style.display='none';
+}
+function fecharModal() {
+  document.getElementById('overlay').classList.remove('ativo');
+  ['input-origem','input-destino'].forEach(function(id){
+    var el=document.getElementById(id); el.value='';
+    delete el.dataset.lat; delete el.dataset.lon;
+  });
+  document.getElementById('sug-origem').classList.remove('vis');
+  document.getElementById('sug-destino').classList.remove('vis');
+  document.getElementById('chk-autoestrada').checked = false;
+  document.getElementById('msg-erro').style.display = 'none';
+  limparWaypoints();
+}
+
+// AUTOCOMPLETE
+var cacheGeo={}, timerSug=null;
+function configurarAC(inputId, listaId) {
+  var inp=document.getElementById(inputId), lst=document.getElementById(listaId);
+  inp.addEventListener('input',function(){
+    clearTimeout(timerSug);
+    var txt=inp.value.trim();
+    if(txt.length<2){lst.classList.remove('vis');lst.innerHTML='';return;}
+    timerSug=setTimeout(function(){buscarSugestoes(txt,inp,lst);},350);
+  });
+  inp.addEventListener('blur',function(){setTimeout(function(){lst.classList.remove('vis');},200);});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')calcularTrajeto();});
+}
+function buscarSugestoes(txt,inp,lst) {
+  var url='https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(txt)+'&limit=5';
+  fetch(url,{headers:{'Accept-Language':'pt-PT,pt,es,fr,en'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      lst.innerHTML='';
+      if(!d.length){lst.classList.remove('vis');return;}
+      d.forEach(function(item){
+        var nome=item.display_name.split(',').slice(0,3).join(', ');
+        var div=document.createElement('div');
+        div.className='sug-item'; div.textContent=nome;
+        div.addEventListener('mousedown',function(){
+          inp.value=nome; inp.dataset.lat=item.lat; inp.dataset.lon=item.lon;
+          lst.classList.remove('vis');
+        });
+        lst.appendChild(div);
+      });
+      lst.classList.add('vis');
+    })
+    .catch(function(){lst.classList.remove('vis');});
+}
+function geocodificar(inputId) {
+  var inp=document.getElementById(inputId);
+  if(inp.dataset.lat&&inp.dataset.lon) return Promise.resolve({lat:parseFloat(inp.dataset.lat),lon:parseFloat(inp.dataset.lon)});
+  var txt=inp.value.trim();
+  if(!txt) return Promise.resolve(null);
+  if(cacheGeo[txt]) return Promise.resolve(cacheGeo[txt]);
+  var url='https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(txt)+'&limit=1';
+  return fetch(url,{headers:{'Accept-Language':'pt-PT,pt,es,fr,en'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.length) return null;
+      var res={lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+      cacheGeo[txt]=res; return res;
+    })
+    .catch(function(){return null;});
+}
+configurarAC('input-origem','sug-origem');
+configurarAC('input-destino','sug-destino');
+
+// HAVERSINE
+function haversine(la1,lo1,la2,lo2){
+  var R=6371,dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;
+  var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function distAPolilinha(pLa,pLo,pts){
+  var min=Infinity;
+  for(var i=0;i<pts.length-1;i++){
+    var aLa=pts[i][0],aLo=pts[i][1],bLa=pts[i+1][0],bLo=pts[i+1][1];
+    var dx=bLo-aLo,dy=bLa-aLa,t=0;
+    if(dx!==0||dy!==0) t=Math.max(0,Math.min(1,((pLo-aLo)*dx+(pLa-aLa)*dy)/(dx*dx+dy*dy)));
+    var d=haversine(pLa,pLo,aLa+t*dy,aLo+t*dx);
+    if(d<min) min=d;
+  }
+  return min;
+}
+
+// OSRM — aceita array de coords [lat,lon, ...]
+function obterRota(coords, evitarAutoestradas){
+  if(evitarAutoestradas) {
+    // OpenRouteService — API pública, suporta avoid highways
+    var waypoints = coords.map(function(c){return [c.lon, c.lat];});
+    return fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, application/geo+json',
+        'Authorization': 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImRiMWY1MDZmNjQzZDRiNTg4ZjQ0NDE3NDQ1ODY1YWRkIiwiaCI6Im11cm11cjY0In0='
+      },
+      body: JSON.stringify({
+        coordinates: waypoints,
+        options: { avoid_features: ['tollways'] }
+      })
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.error) throw new Error('ORS: ' + (d.error.message || JSON.stringify(d.error)));
+      if(!d.features||!d.features.length) throw new Error('ORS: sem rotas na resposta');
+      var geom = d.features[0].geometry.coordinates;
+      var pts = geom.map(function(c){return[c[1],c[0]];});
+      var summary = d.features[0].properties.summary;
+      return {
+        pts:pts,
+        km:(summary.distance/1000).toFixed(0),
+        min:Math.round(summary.duration/60),
+        evitou:true
+      };
+    }).catch(function(e){ throw e; });
+  }
+
+  // Rota normal via OSRM
+  var wayStr = coords.map(function(c){return c.lon+','+c.lat;}).join(';');
+  var url = 'https://router.project-osrm.org/route/v1/driving/'+wayStr+'?overview=full&geometries=geojson';
+  return fetch(url).then(function(r){return r.json();}).then(function(d){
+    if(d.code!=='Ok'||!d.routes||!d.routes.length) return null;
+    var pts=d.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
+    return {pts:pts,km:(d.routes[0].distance/1000).toFixed(0),min:Math.round(d.routes[0].duration/60),evitou:false};
+  }).catch(function(){return null;});
+}
+
+// GESTÃO DE WAYPOINTS
+var numWaypoints = 0;
+var MAX_WAYPOINTS = 2;
+var wpTimer = null;
+
+function adicionarWaypoint(){
+  if(numWaypoints >= MAX_WAYPOINTS) return;
+  numWaypoints++;
+  var idx = numWaypoints;
+  var wrap = document.getElementById('waypoints-wrap');
+  var row = document.createElement('div');
+  row.className = 'wp-row';
+  row.id = 'wp-row-'+idx;
+  row.innerHTML = '<input type="text" id="wp-'+idx+'" placeholder="Ex: Burgos, Pamplona..." autocomplete="off"/>'
+    +'<div id="wp-sug-'+idx+'" class="wp-sug"></div>'
+    +'<button class="btn-rm-wp" onclick="removerWaypoint('+idx+')"><i class="fa fa-xmark"></i></button>';
+  wrap.appendChild(row);
+
+  // Autocomplete para este waypoint
+  var inp = document.getElementById('wp-'+idx);
+  var lst = document.getElementById('wp-sug-'+idx);
+  inp.addEventListener('input', function(){
+    clearTimeout(wpTimer);
+    var txt = inp.value.trim();
+    if(txt.length<2){lst.classList.remove('vis');lst.innerHTML='';return;}
+    wpTimer = setTimeout(function(){buscarSugestoes(txt,inp,lst);},350);
+  });
+  inp.addEventListener('blur',function(){setTimeout(function(){lst.classList.remove('vis');},200);});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')calcularTrajeto();});
+
+  // Esconder botão se já atingiu o máximo
+  if(numWaypoints >= MAX_WAYPOINTS)
+    document.getElementById('btn-add-wp').style.display='none';
+}
+
+function removerWaypoint(idx){
+  var row = document.getElementById('wp-row-'+idx);
+  if(row) row.parentNode.removeChild(row);
+  numWaypoints--;
+  // Renumerar IDs
+  var rows = document.getElementById('waypoints-wrap').querySelectorAll('.wp-row');
+  numWaypoints = rows.length;
+  document.getElementById('btn-add-wp').style.display = numWaypoints < MAX_WAYPOINTS ? 'block' : 'none';
+}
+
+function limparWaypoints(){
+  document.getElementById('waypoints-wrap').innerHTML='';
+  numWaypoints=0;
+  document.getElementById('btn-add-wp').style.display='block';
+}
+
+function geocodificarWaypoints(){
+  var rows = document.getElementById('waypoints-wrap').querySelectorAll('.wp-row');
+  var promises = [];
+  rows.forEach(function(row){
+    var inp = row.querySelector('input');
+    if(inp && inp.value.trim()){
+      promises.push(geocodificarInput(inp));
+    }
+  });
+  return Promise.all(promises);
+}
+
+function geocodificarInput(inp){
+  if(inp.dataset.lat&&inp.dataset.lon) return Promise.resolve({lat:parseFloat(inp.dataset.lat),lon:parseFloat(inp.dataset.lon)});
+  var txt=inp.value.trim();
+  if(!txt) return Promise.resolve(null);
+  if(cacheGeo[txt]) return Promise.resolve(cacheGeo[txt]);
+  var url='https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(txt)+'&limit=1';
+  return fetch(url,{headers:{'Accept-Language':'pt-PT,pt,es,fr,en'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.length) return null;
+      var res={lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+      cacheGeo[txt]=res; return res;
+    })
+    .catch(function(){return null;});
+}
+
+// CALCULAR TRAJETO
+function calcularTrajeto(){
+  var origem=document.getElementById('input-origem').value.trim();
+  var destino=document.getElementById('input-destino').value.trim();
+  var msgErro=document.getElementById('msg-erro');
+  var btnCalc=document.getElementById('btn-calc');
+  msgErro.style.display='none';
+
+  if(!origem||!destino){
+    msgErro.textContent='⚠ Preenche a origem e o destino.';
+    msgErro.style.display='block'; return;
+  }
+  var empresa=document.getElementById('sel-empresa').value;
+  var servico=document.getElementById('sel-servico').value;
+  if(!empresa||!servico){
+    msgErro.textContent='⚠ Seleciona empresa e serviço primeiro.';
+    msgErro.style.display='block'; return;
+  }
+
+  btnCalc.disabled=true;
+  btnCalc.innerHTML='<i class="fa fa-spinner fa-spin"></i> A calcular...';
+
+  Promise.all([geocodificar('input-origem'), geocodificar('input-destino')]).then(function(res){
+    var cO=res[0], cD=res[1];
+    if(!cO) throw new Error('Origem não encontrada: '+origem);
+    if(!cD) throw new Error('Destino não encontrado: '+destino);
+
+    return geocodificarWaypoints().then(function(wps){
+      var coords = [cO];
+      wps.forEach(function(wp){ if(wp) coords.push(wp); });
+      coords.push(cD);
+      var evitar = document.getElementById('chk-autoestrada').checked;
+
+      return obterRota(coords, evitar).then(function(rota){
+        if(!rota) throw new Error('Rota não calculada. Tenta sem evitar portagens.');
+
+      var ocultos=POSTOS_OCULTOS;
+
+      // Limpar camada anterior e desenhar rota SEMPRE
+      marcadoresOcultos.forEach(function(m){mapa.removeLayer(m);});
+      marcadoresOcultos=[];
+
+      var linha=L.polyline(rota.pts,{color:'#f5a623',weight:4,opacity:0.85}).addTo(mapa);
+      linha.bindTooltip(rota.km+' km · '+Math.floor(rota.min/60)+'h'+(rota.min%60)+'m',{sticky:true});
+      marcadoresOcultos.push(linha);
+
+      var mO=L.circleMarker([cO.lat,cO.lon],{radius:9,color:'#27ae60',fillColor:'#27ae60',fillOpacity:1,weight:2}).bindTooltip('<b>Origem:</b> '+origem).addTo(mapa);
+      marcadoresOcultos.push(mO);
+      var mD=L.circleMarker([cD.lat,cD.lon],{radius:9,color:'#e94560',fillColor:'#e94560',fillOpacity:1,weight:2}).bindTooltip('<b>Destino:</b> '+destino).addTo(mapa);
+      marcadoresOcultos.push(mD);
+
+      mapa.fitBounds(L.latLngBounds(rota.pts),{padding:[50,50]});
+
+      // Aviso se evitar autoestradas estava ativo
+      if(rota.evitou) {
+        msgErro.style.background='rgba(245,166,35,0.15)';
+        msgErro.style.borderColor='#f5a623';
+        msgErro.style.color='#f5a623';
+        msgErro.textContent='⚠ Para evitar portagens necessitas de uma API key do OpenRouteService. Usa pontos intermédios para forçar a rota.';
+        msgErro.style.display='block';
+      }
+
+      // Postos alternativos — mostrar os que estão dentro do raio
+      var DIST_MAX_KM = 10;
+      if(ocultos.length > 0) {
+        var comDist=ocultos.map(function(p){
+          var np=Object.assign({},p); np.dist=distAPolilinha(p.lat,p.lon,rota.pts); return np;
+        });
+        comDist.sort(function(a,b){return a.dist-b.dist;});
+        var noRaio = comDist.filter(function(p){ return p.dist <= DIST_MAX_KM; });
+
+        if(noRaio.length > 0) {
+          // 1º escolha: mais barato dentro do raio
+          // 2º escolha: mais próximo (se não houver mais barato)
+          var maisBárato = noRaio.filter(function(p){ return p.maisBárato; });
+          var escolhido = maisBárato.length > 0 ? maisBárato[0] : noRaio[0];
+
+          filaMensagens = [];
+          var m = L.marker([escolhido.lat, escolhido.lon], {icon:criarIcone(escolhido.prioridade, true)});
+          var badge = escolhido.maisBárato
+            ? '<div style="background:rgba(39,174,96,0.2);border:1px solid #27ae60;color:#27ae60;text-align:center;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700;margin-bottom:7px;letter-spacing:1px;">💰 MAIS BARATO NA ROTA</div>'
+            : '';
+          var html = badge + criarPopup(escolhido, true)
+            + '<div style="font-size:11px;color:#8892a4;text-align:center;margin-top:5px;">'
+            + escolhido.dist.toFixed(1) + ' km da rota</div>';
+          m.bindPopup(html, {maxWidth:230});
+          m.bindTooltip(escolhido.posto, {direction:'top', offset:[0,-42]});
+          m.addTo(mapa);
+          m.openPopup();
+          marcadoresOcultos.push(m);
+
+          if(escolhido.mensagem && escolhido.mensagem.trim() !== '') {
+            filaMensagens.push({posto: escolhido.posto, mensagem: escolhido.mensagem});
+          }
+          var todosPts = rota.pts.concat([[escolhido.lat, escolhido.lon]]);
+          mapa.fitBounds(L.latLngBounds(todosPts), {padding:[50,50]});
+          if(filaMensagens.length > 0) {
+            var primeira = filaMensagens.shift();
+            setTimeout(function(){ mostrarMsgOverlay(primeira.posto, primeira.mensagem); }, 600);
+          }
+        } else {
+          msgErro.style.background='rgba(245,166,35,0.15)';
+          msgErro.style.borderColor='#f5a623';
+          msgErro.style.color='#f5a623';
+          msgErro.textContent='ℹ️ Rota traçada mas sem postos alternativos a menos de '+DIST_MAX_KM+' km.';
+          msgErro.style.display='block';
+        }
+      }
+
+      fecharModal();
+    });
+    });
+  }).catch(function(err){
+    msgErro.textContent='❌ '+err.message;
+    msgErro.style.display='block';
+  }).finally(function(){
+    btnCalc.disabled=false;
+    btnCalc.innerHTML='<i class="fa fa-magnifying-glass"></i> Encontrar Postos';
+  });
+}
+
+document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)fecharModal();});
+
+// Expor funções ao escopo global (chamadas dos onclick no HTML)
+window.filtrarMapa = filtrarMapa;
+window.abrirModal = abrirModal;
+window.fecharModal = fecharModal;
+window.calcularTrajeto = calcularTrajeto;
+window.adicionarWaypoint = adicionarWaypoint;
+window.removerWaypoint = removerWaypoint;
+window.fecharMsgOverlay = fecharMsgOverlay;
+window.fecharWelcome = fecharWelcome;
+window.instalarApp = instalarApp;
+
+}); // fim do window.load
+</script>
+</body>
+</html>
