@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Postos Autorizados — Grupo João Pires</title>
 
 <!-- PWA -->
@@ -48,18 +51,9 @@ appleIcon.href = iconUrl;
 document.head.appendChild(appleIcon);
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    var swCode = [
-      'var VERSAO = "20260421105355";',
-      'self.addEventListener("install", function(e) { self.skipWaiting(); });',
-      'self.addEventListener("activate", function(e) { e.waitUntil(clients.claim()); });',
-      'self.addEventListener("fetch", function(e) { e.respondWith(fetch(e.request)); });'
-    ].join('\n');
-    var swBlob = new Blob([swCode], {type: 'application/javascript'});
-    var swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).then(function(reg) {
-      reg.update(); // Verifica atualização imediatamente
-    });
+  // Desregistar service workers antigos para forçar atualização
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(reg) { reg.unregister(); });
   });
 }
 
