@@ -456,7 +456,7 @@ select {
 <div id="mapa"></div>
 
 <!-- BANNER DE ATUALIZACAO -->
-<div id="update-banner" onclick="location.reload(true)">&#x1F504; Nova vers&#xE3;o disponivel &mdash; toca para atualizar</div>
+<div id="update-banner" onclick="this.style.display='none'">&#x2705; App atualizada! Toca para fechar</div>
 
 <div id="header">
   <div class="logo">GRUPO <span>JOÃO PIRES</span></div>
@@ -1191,20 +1191,15 @@ window.confirmarAlterarCodigo = confirmarAlterarCodigo;
 
 verificarMotorista();
 
-// VERIFICACAO DE ATUALIZACAO EM BACKGROUND
-var APP_VERSAO = '20260428171254';
-localStorage.setItem('appVersao', APP_VERSAO);
-setTimeout(function() {
-  fetch(location.href, {cache: 'no-cache'})
-    .then(function(r) { return r.text(); })
-    .then(function(html) {
-      var match = html.match(/APP_VERSAO\s*=\s*'(\d+)'/);
-      if (match && match[1] !== APP_VERSAO) {
-        document.getElementById('update-banner').style.display = 'block';
-      }
-    })
-    .catch(function() {});
-}, 8000);
+// VERIFICACAO DE VERSAO
+var APP_VERSAO = '20260428174610';
+(function() {
+  var guardada = localStorage.getItem('appVersao');
+  if (guardada && guardada !== APP_VERSAO) {
+    document.getElementById('update-banner').style.display = 'block';
+  }
+  localStorage.setItem('appVersao', APP_VERSAO);
+})();
 
 }); // fim do window.load
 </script>
