@@ -302,25 +302,38 @@ select {
 /* POPUP CHANGELOG */
 #changelog-overlay {
   display:none; position:fixed; inset:0; z-index:20000;
-  background:rgba(0,0,0,0.82); align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.88); align-items:center; justify-content:center;
 }
 #changelog-box {
-  background:#1a1a2e; border:1px solid #2a4a7f; border-radius:14px;
-  padding:28px 24px; width:90%; max-width:360px; max-height:80vh; overflow-y:auto;
+  background:#0d1117; border-radius:12px;
+  width:90%; max-width:360px; max-height:80vh;
+  overflow:hidden; display:flex; flex-direction:column;
 }
-.cl-titulo { font-size:18px; font-weight:700; color:#fff; text-align:center; margin-bottom:6px; }
-.cl-versao { font-size:12px; color:#8892a4; text-align:center; margin-bottom:16px; }
-#cl-lista { list-style:none; padding:0; margin:0 0 20px 0; }
+.cl-header { background:#f5a623; padding:20px 20px 14px; text-align:center; }
+.cl-icon { font-size:28px; display:block; margin-bottom:6px; }
+.cl-titulo {
+  font-size:13px; font-weight:800; color:#111;
+  text-transform:uppercase; letter-spacing:1.5px;
+}
+.cl-versao { font-size:11px; color:#5a3e00; margin-top:4px; }
+.cl-body { padding:0 20px; overflow-y:auto; flex:1; }
+#cl-lista { list-style:none; padding:0; margin:0; }
 #cl-lista li {
-  padding:8px 0 8px 20px; border-bottom:1px solid #16213e;
-  color:#e0e0e0; font-size:14px; line-height:1.5; position:relative;
+  padding:12px 0 12px 24px; border-bottom:1px solid #1a1a2e;
+  color:#d1d5db; font-size:14px; line-height:1.5; position:relative;
 }
-#cl-lista li::before { content:'•'; position:absolute; left:0; color:#f5a623; font-weight:700; }
+#cl-lista li:last-child { border-bottom:none; }
+#cl-lista li::before {
+  content:'✓'; position:absolute; left:0; top:12px;
+  color:#27ae60; font-weight:900; font-size:14px;
+}
+.cl-footer { padding:12px 20px 20px; }
 .cl-btn {
-  width:100%; padding:12px; background:#2a4a7f; color:#fff;
-  border:none; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer;
+  width:100%; padding:13px; background:transparent;
+  color:#f5a623; border:2px solid #f5a623; border-radius:8px;
+  font-size:15px; font-weight:700; cursor:pointer;
 }
-.cl-btn:active { background:#1e3a6f; }
+.cl-btn:active { background:rgba(245,166,35,0.12); }
 
 /* POPUP DE BOAS-VINDAS */
 #welcome-overlay {
@@ -484,10 +497,17 @@ select {
 <!-- POPUP CHANGELOG -->
 <div id="changelog-overlay">
   <div id="changelog-box">
-    <div class="cl-titulo">&#x1F195; O que h&#xE1; de novo</div>
-    <div id="cl-versao" class="cl-versao"></div>
-    <ul id="cl-lista"></ul>
-    <button class="cl-btn" onclick="fecharChangelog()">OK, entendido</button>
+    <div class="cl-header">
+      <span class="cl-icon">&#x1F195;</span>
+      <div class="cl-titulo">O que h&#xE1; de novo</div>
+      <div id="cl-versao" class="cl-versao"></div>
+    </div>
+    <div class="cl-body">
+      <ul id="cl-lista"></ul>
+    </div>
+    <div class="cl-footer">
+      <button class="cl-btn" onclick="fecharChangelog()">OK, entendido</button>
+    </div>
   </div>
 </div>
 
@@ -1226,7 +1246,7 @@ window.confirmarAlterarCodigo = confirmarAlterarCodigo;
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO
-var APP_VERSAO = '20260429092701';
+var APP_VERSAO = '20260429094727';
 var NOTAS_VERSAO = ["Consumos médios e especificações da viatura adicionados ao perfil", "Notificação automática ao abrir a app após cada atualização"];
 (function() {
   var guardada = localStorage.getItem('appVersao');
@@ -1234,6 +1254,17 @@ var NOTAS_VERSAO = ["Consumos médios e especificações da viatura adicionados 
     mostrarChangelog();
   }
   localStorage.setItem('appVersao', APP_VERSAO);
+  setTimeout(function() {
+    fetch(location.href, {cache: 'reload'})
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        var m = html.match(/APP_VERSAO\s*=\s*'(\d+)'/);
+        if (m && m[1] > APP_VERSAO) {
+          document.getElementById('update-banner').style.display = 'block';
+        }
+      })
+      .catch(function() {});
+  }, 10000);
 })();
 
 function mostrarChangelog() {
