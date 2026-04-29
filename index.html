@@ -51,9 +51,16 @@ appleIcon.href = iconUrl;
 document.head.appendChild(appleIcon);
 
 if ('serviceWorker' in navigator) {
-  // Desregistar service workers antigos para forçar atualização
-  navigator.serviceWorker.getRegistrations().then(function(regs) {
-    regs.forEach(function(reg) { reg.unregister(); });
+  navigator.serviceWorker.register('./sw.js').then(function(reg) {
+    reg.addEventListener('updatefound', function() {
+      var sw = reg.installing;
+      sw.addEventListener('statechange', function() {
+        if (sw.state === 'activated') {
+          // Nova versão activada — recarregar automaticamente
+          window.location.reload();
+        }
+      });
+    });
   });
 }
 
@@ -1451,7 +1458,7 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO
-var APP_VERSAO = '20260429144639';
+var APP_VERSAO = '20260429150125';
 var NOTAS_VERSAO = ["Consumos médios e especificações da viatura adicionados ao perfil", "Notificação automática ao abrir a app após cada atualização"];
 (function() {
   var guardada = localStorage.getItem('appVersao');
