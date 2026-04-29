@@ -299,6 +299,29 @@ select {
 .vb-c-label { font-size:9px; color:#8892a4; margin-top:2px; text-transform:uppercase; letter-spacing:0.5px; }
 .vb-sem-viatura { text-align:center; padding:20px 0; color:#8892a4; font-size:13px; }
 
+/* POPUP CHANGELOG */
+#changelog-overlay {
+  display:none; position:fixed; inset:0; z-index:20000;
+  background:rgba(0,0,0,0.82); align-items:center; justify-content:center;
+}
+#changelog-box {
+  background:#1a1a2e; border:1px solid #2a4a7f; border-radius:14px;
+  padding:28px 24px; width:90%; max-width:360px; max-height:80vh; overflow-y:auto;
+}
+.cl-titulo { font-size:18px; font-weight:700; color:#fff; text-align:center; margin-bottom:6px; }
+.cl-versao { font-size:12px; color:#8892a4; text-align:center; margin-bottom:16px; }
+#cl-lista { list-style:none; padding:0; margin:0 0 20px 0; }
+#cl-lista li {
+  padding:8px 0 8px 20px; border-bottom:1px solid #16213e;
+  color:#e0e0e0; font-size:14px; line-height:1.5; position:relative;
+}
+#cl-lista li::before { content:'•'; position:absolute; left:0; color:#f5a623; font-weight:700; }
+.cl-btn {
+  width:100%; padding:12px; background:#2a4a7f; color:#fff;
+  border:none; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer;
+}
+.cl-btn:active { background:#1e3a6f; }
+
 /* POPUP DE BOAS-VINDAS */
 #welcome-overlay {
   display:flex; position:fixed; inset:0;
@@ -457,6 +480,16 @@ select {
 
 <!-- BANNER DE ATUALIZACAO -->
 <div id="update-banner" onclick="this.style.display='none'">&#x2705; App atualizada! Toca para fechar</div>
+
+<!-- POPUP CHANGELOG -->
+<div id="changelog-overlay">
+  <div id="changelog-box">
+    <div class="cl-titulo">&#x1F195; O que h&#xE1; de novo</div>
+    <div id="cl-versao" class="cl-versao"></div>
+    <ul id="cl-lista"></ul>
+    <button class="cl-btn" onclick="fecharChangelog()">OK, entendido</button>
+  </div>
+</div>
 
 <div id="header">
   <div class="logo">GRUPO <span>JOÃO PIRES</span></div>
@@ -1187,19 +1220,38 @@ window.instalarApp = instalarApp;
 window.entrarComCodigo = entrarComCodigo;
 window.mostrarInfoViatura = mostrarInfoViatura;
 window.fecharInfoViatura = fecharInfoViatura;
+window.fecharChangelog = fecharChangelog;
 window.confirmarAlterarCodigo = confirmarAlterarCodigo;
 
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO
-var APP_VERSAO = '20260428174610';
+var APP_VERSAO = '20260429092701';
+var NOTAS_VERSAO = ["Consumos médios e especificações da viatura adicionados ao perfil", "Notificação automática ao abrir a app após cada atualização"];
 (function() {
   var guardada = localStorage.getItem('appVersao');
   if (guardada && guardada !== APP_VERSAO) {
-    document.getElementById('update-banner').style.display = 'block';
+    mostrarChangelog();
   }
   localStorage.setItem('appVersao', APP_VERSAO);
 })();
+
+function mostrarChangelog() {
+  var vY=APP_VERSAO.slice(0,4),vM=APP_VERSAO.slice(4,6),vD=APP_VERSAO.slice(6,8);
+  document.getElementById('cl-versao').textContent = 'Versão ' + vD+'/'+vM+'/'+vY;
+  var ul = document.getElementById('cl-lista');
+  ul.innerHTML = '';
+  NOTAS_VERSAO.forEach(function(nota) {
+    var li = document.createElement('li');
+    li.textContent = nota;
+    ul.appendChild(li);
+  });
+  document.getElementById('changelog-overlay').style.display = 'flex';
+}
+
+function fecharChangelog() {
+  document.getElementById('changelog-overlay').style.display = 'none';
+}
 
 }); // fim do window.load
 </script>
