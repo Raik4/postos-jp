@@ -576,7 +576,7 @@ select {
 <div id="mapa"></div>
 
 <!-- BANNER DE ATUALIZACAO -->
-<div id="update-banner" onclick="this.style.display='none'">&#x2705; App atualizada! Toca para fechar</div>
+<div id="update-banner" onclick="window.location.href=location.pathname+'?v='+Date.now();" style="cursor:pointer;">&#x1F504; Nova vers&#xE3;o dispon&#xED;vel &#x2014; toca para atualizar</div>
 
 <!-- POPUP CHANGELOG -->
 <div id="changelog-overlay">
@@ -1451,7 +1451,7 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO
-var APP_VERSAO = '20260429143652';
+var APP_VERSAO = '20260429144639';
 var NOTAS_VERSAO = ["Consumos médios e especificações da viatura adicionados ao perfil", "Notificação automática ao abrir a app após cada atualização"];
 (function() {
   var guardada = localStorage.getItem('appVersao');
