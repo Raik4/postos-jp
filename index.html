@@ -1553,7 +1553,7 @@ function _renderHistorico() {
     html += '<div class="hx-ano-tabs">';
     _hxData.forEach(function(h) {
       var cls = h.ano === _hxAnoAtivo ? ' ativo' : '';
-      html += '<button class="hx-tab'+cls+'" onclick="_hxAnoAtivo='+h.ano+';_renderHistorico()">'+h.ano+'</button>';
+      html += '<button class="hx-tab'+cls+'" onclick="_hxSetAno('+h.ano+')">'+h.ano+'</button>';
     });
     html += '</div>';
   }
@@ -1564,8 +1564,8 @@ function _renderHistorico() {
 
   // Abas Motorista / Camião
   html += '<div class="hx-view-tabs">'
-    + '<button class="hx-view-tab'+(_hxView==='motorista' ? ' ativo' : '')+'" data-v="motorista" onclick="_hxView=this.dataset.v;_renderHistorico()">&#x1F464; Motorista</button>'
-    + '<button class="hx-view-tab'+(_hxView==='camiao' ? ' ativo' : '')+'" data-v="camiao" onclick="_hxView=this.dataset.v;_renderHistorico()">&#x1F69A; Cami&#xE3;o</button>'
+    + '<button class="hx-view-tab'+(_hxView==='motorista' ? ' ativo' : '')+'" onclick="_hxSetView(0)">&#x1F464; Motorista</button>'
+    + '<button class="hx-view-tab'+(_hxView==='camiao' ? ' ativo' : '')+'" onclick="_hxSetView(1)">&#x1F69A; Cami&#xE3;o</button>'
     + '</div>';
 
   if (_hxView === 'motorista') {
@@ -1648,8 +1648,13 @@ function _renderHistorico() {
   document.getElementById('hx-conteudo').innerHTML = html;
 }
 
+function _hxSetView(i) { _hxView = i === 0 ? 'motorista' : 'camiao'; _renderHistorico(); }
+function _hxSetAno(a)  { _hxAnoAtivo = a; _renderHistorico(); }
+
 window.mostrarHistorico = mostrarHistorico;
 window.fecharHistorico = fecharHistorico;
+window._hxSetView = _hxSetView;
+window._hxSetAno  = _hxSetAno;
 
 window.instalarApp = instalarApp;
 window.entrarComCodigo = entrarComCodigo;
@@ -1672,7 +1677,7 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO
-var APP_VERSAO = '20260430142624';
+var APP_VERSAO = '20260430143959';
 var NOTAS_VERSAO = ["Consumos médios e especificações da viatura adicionados ao perfil", "Notificação automática ao abrir a app após cada atualização"];
 (function() {
   var guardada = localStorage.getItem('appVersao');
