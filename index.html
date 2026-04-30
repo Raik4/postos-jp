@@ -542,12 +542,17 @@ select {
 #ir-box .ir-icon { font-size:52px; margin-bottom:16px; }
 #ir-box h2 { font-size:22px; font-weight:700; color:#f0f0f0; margin-bottom:10px; }
 #ir-box p { font-size:13px; color:#8892a4; margin-bottom:8px; line-height:1.6; }
-.ir-steps {
-  background:#0f3460; border-radius:10px; padding:16px; text-align:left; margin-top:16px;
+#ir-btn-instalar {
+  margin-top:20px; width:100%; background:#27ae60; color:#fff;
+  border:none; border-radius:28px; padding:14px 22px;
+  font-size:14px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+  cursor:pointer; box-shadow:0 4px 18px rgba(39,174,96,0.5);
+  display:none; align-items:center; justify-content:center; gap:8px;
 }
-.ir-steps p { font-size:12px; color:#b0bec5; margin:0 0 10px; line-height:1.5; }
-.ir-steps p:last-child { margin:0; }
-.ir-steps b { color:#f5a623; }
+#ir-ios {
+  display:none; margin-top:18px; font-size:12px; color:#8892a4; line-height:1.9;
+}
+#ir-ios b { color:#f5a623; }
 
 @keyframes pulso-btn {
   0%   { box-shadow: 0 0 0 0 rgba(245,166,35,0.65); }
@@ -796,10 +801,9 @@ select {
   <div id="ir-box">
     <div class="ir-icon">&#x1F4F1;</div>
     <h2>App não instalada</h2>
-    <p>Esta aplicação tem de ser <b style="color:#f5a623">instalada no telemóvel</b> para ser utilizada.</p>
-    <div class="ir-steps">
-      <p>&#x1F4F1; <b>Android:</b> Menu ⋮ &rarr; &ldquo;Adicionar ao ecrã inicial&rdquo;</p>
-      <p>&#x1F34E; <b>iPhone:</b> ícone de partilhar &uarr; &rarr; &ldquo;Adicionar ao ecrã de início&rdquo;</p>
+    <p>Para acederes a esta aplicação,<br>tens de a instalar no teu telemóvel.</p>
+    <button id="ir-btn-instalar"><i class="fa fa-download"></i> Instalar App</button>
+    <p id="ir-ios">Toca em <b>Partilhar</b> &#x2191; e depois em<br><b>&ldquo;Adicionar ao ecrã de início&rdquo;</b></p>
     </div>
   </div>
 </div>
@@ -855,6 +859,34 @@ select {
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
+var deferredPrompt = null;
+var _appReady = false;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (_appReady) {
+    var _b = document.getElementById('install-banner');
+    if (_b) { _b.style.display = 'flex'; setTimeout(function() { _b.style.display = 'none'; }, 10000); }
+  } else {
+    var _irBtn2 = document.getElementById('ir-btn-instalar');
+    var _irIos2 = document.getElementById('ir-ios');
+    if (_irBtn2) {
+      if (_irIos2) _irIos2.style.display = 'none';
+      _irBtn2.style.display = 'flex';
+      _irBtn2.onclick = function() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function() { deferredPrompt = null; });
+      };
+    }
+  }
+});
+window.addEventListener('appinstalled', function() {
+  deferredPrompt = null;
+  var _b = document.getElementById('install-banner');
+  if (_b) _b.style.display = 'none';
+});
+
 window.addEventListener('load', function() {
 
 if (typeof L === 'undefined') {
@@ -866,8 +898,21 @@ if (typeof L === 'undefined') {
 var _sa = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 if (!_sa) {
   document.getElementById('install-required').style.display = 'flex';
+  var _irBtn = document.getElementById('ir-btn-instalar');
+  var _irIos = document.getElementById('ir-ios');
+  if (deferredPrompt && _irBtn) {
+    _irBtn.style.display = 'flex';
+    _irBtn.onclick = function() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function() { deferredPrompt = null; });
+    };
+  } else if (_irIos) {
+    _irIos.style.display = 'block';
+  }
   return;
 }
+_appReady = true;
 
 var POSTOS_VISIVEIS = [{"posto": "IDS Irún", "direcao": "PI Arazo Erreka, Irún", "lat": 43.32575, "lon": -1.83621, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "IDS Beriain", "direcao": "PI Morea Norte, Beriain", "lat": 42.73405, "lon": -1.63493, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": true, "nacional": false}, {"posto": "AS24 Bordéus", "direcao": "Bordéus", "lat": 44.91413, "lon": -0.48748, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Narbonne", "direcao": "Narbonne", "lat": 43.16306, "lon": 2.98582, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Epinal", "direcao": "Épinal", "lat": 48.22179, "lon": 6.43103, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Roye", "direcao": "Roye", "lat": 49.70837, "lon": 2.76408, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Laon", "direcao": "Laon", "lat": 49.571, "lon": 3.65434, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Le Mans", "direcao": "Champagne", "lat": 48.01579, "lon": 0.33483, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Strasbourg", "direcao": "Reichstett", "lat": 48.66375, "lon": 7.76504, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Troyes", "direcao": "La Chapelle St Luc", "lat": 48.31537, "lon": 4.02712, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Souterraine", "direcao": "St Maurice", "lat": 46.20339, "lon": 1.39043, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Sevrey", "direcao": "Sevrey", "lat": 46.746, "lon": 4.85088, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Montmarault", "direcao": "Montmarault", "lat": 46.32242, "lon": 2.96374, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Pagny Sur Meuse", "direcao": "Pagny sur Meuse", "lat": 48.68403, "lon": 5.73471, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Lyon", "direcao": "St Quentin Fallavier", "lat": 45.66213, "lon": 5.10684, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Orleáns", "direcao": "Saran", "lat": 47.94979, "lon": 1.84388, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Bonneville", "direcao": "Bonneville", "lat": 46.06589, "lon": 6.41279, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "AS24 Chalon en Champagne", "direcao": "Chalons en Champagne", "lat": 49.03718, "lon": 4.3222, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "Parque - Cerveira", "direcao": "ZI, R. do Polo 2, 4920-012 Vila Nova de Cerveira", "lat": 41.967, "lon": -8.68636, "prioridade": "verde", "joaoPiresPt": true, "loartrans": false, "joaoPiresEs": false, "internacional": false, "iberico": false, "nacional": true}, {"posto": "IDS - Sertui", "direcao": "Calle Pontenova, 24 B, 36720 Guillarei Tui", "lat": 42.06962, "lon": -8.63183, "prioridade": "verde", "joaoPiresPt": false, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": false, "nacional": true}, {"posto": "Moeve Araia", "direcao": "PG OKITURRI, 3-4, 01207, Álava", "lat": 42.86353, "lon": -2.32411, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": true, "nacional": false}, {"posto": "Moeve Jonqueira", "direcao": "CTRA. UNIDIRECCIONAL - UNE ADUANA DE LA JUNQUERA, Carr. Nacional, 430, 17700 La Jonquera", "lat": 42.42695, "lon": 2.86686, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false}, {"posto": "Moeve Bonavia", "direcao": "N-232 PK: 271, C. Bonavía, 2B, 2, 50690 Pedrola, Zaragoza", "lat": 41.7728, "lon": -1.21695, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}, {"posto": "Moeve Adanero", "direcao": "Autovía del Noroeste, PK: 111, 05296 Adanero, Ávila", "lat": 40.95519, "lon": -4.61458, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}, {"posto": "Moeve Calzadilla de los Barros", "direcao": "Autovía Ruta de la Plata, PK: 694, 06249 Calzadilla de los Barros, Badajoz", "lat": 38.3151, "lon": -6.30199, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}, {"posto": "IDS Aldhuela de la Boveda", "direcao": "N-620, Autovía de Castilla, Salida 275, 37460 La Estación, Salamanca", "lat": 40.84996, "lon": -6.05042, "prioridade": "verde", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false}];
 var POSTOS_OCULTOS  = [{"posto": "MLC Burutain", "direcao": "N-121-A, PK 17, 380, 31798 Burutain", "lat": 42.93182, "lon": -1.60889, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": true, "iberico": false, "nacional": false, "mensagem": "Se for no sentido França pode atestar.", "maisBárato": 0}, {"posto": "Parque - Cerveira", "direcao": "ZI, R. do Polo 2, 4920-012 Vila Nova de Cerveira", "lat": 41.967, "lon": -8.68636, "prioridade": "verde", "joaoPiresPt": true, "loartrans": false, "joaoPiresEs": false, "internacional": false, "iberico": false, "nacional": true, "mensagem": "Deve abastecer o minímo até um posto autorizado.", "maisBárato": 4}, {"posto": "IDS - Sertui", "direcao": "Calle Pontenova, 24 B, 36720 Guillarei Tui", "lat": 42.06962, "lon": -8.63183, "prioridade": "verde", "joaoPiresPt": false, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": false, "nacional": true, "mensagem": "Deve abastecer o minímo até um posto autorizado.", "maisBárato": 3}, {"posto": "IDS Benavente", "direcao": "P. Tecnológico de Benavente, C/ Vila Real, E-49600 Benavente", "lat": 42.00599, "lon": -5.66385, "prioridade": "vermelho", "joaoPiresPt": false, "loartrans": false, "joaoPiresEs": false, "internacional": false, "iberico": false, "nacional": false, "mensagem": "Deve abastecer o minímo até um posto autorizado.", "maisBárato": 2}, {"posto": "Moeve Ponteareas", "direcao": "A52 km 290, 36862 Ponteares", "lat": 42.14535, "lon": -8.47633, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false, "mensagem": "Podem atestar no Serviço de Bragança x Vigo, fora isso sempre o mínimo até um posto autorizado.", "maisBárato": 1}, {"posto": "Moeve Nueva Fraga", "direcao": "CTRA FRAGA A, C. de Torrente de Cinca, S/N, POLIGONO 88, PARCELAS 22 Y 25, 22520 Fraga", "lat": 41.50825, "lon": 0.32812, "prioridade": "amarelo", "joaoPiresPt": true, "loartrans": true, "joaoPiresEs": true, "internacional": false, "iberico": true, "nacional": false, "mensagem": "", "maisBárato": 0}];
@@ -1078,16 +1123,6 @@ function filtrarMapa() {
   setTimeout(function(){ ap.style.display='none'; }, 5000);
 }
 
-// PWA INSTALL
-var deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', function(e) {
-  e.preventDefault();
-  deferredPrompt = e;
-  var banner = document.getElementById('install-banner');
-  banner.style.display = 'flex';
-  setTimeout(function() { banner.style.display = 'none'; }, 10000);
-});
-
 function instalarApp() {
   if(!deferredPrompt) return;
   deferredPrompt.prompt();
@@ -1098,11 +1133,6 @@ function instalarApp() {
     deferredPrompt = null;
   });
 }
-
-window.addEventListener('appinstalled', function() {
-  document.getElementById('install-banner').style.display = 'none';
-  deferredPrompt = null;
-});
 
 // POPUP DE BOAS-VINDAS
 function fecharWelcome() {
@@ -1574,7 +1604,7 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO
-var APP_VERSAO = '20260430095357';
+var APP_VERSAO = '20260430101409';
 var NOTAS_VERSAO = ["Consumos médios e especificações da viatura adicionados ao perfil", "Notificação automática ao abrir a app após cada atualização"];
 (function() {
   var guardada = localStorage.getItem('appVersao');
