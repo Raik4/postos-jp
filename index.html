@@ -2159,8 +2159,9 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO E NOTAS DE ALTERACAO
-var APP_VERSAO = '20260522150210';
+var APP_VERSAO = '20260522152623';
 var NOTAS_VERSAO = ["Alteração de Postos no serviço Nacional"];
+var NOTAS_VERSAO_TIMESTAMP = '0';
 
 function pedirPermissaoNotificacoes() {
   if ('Notification' in window && Notification.permission === 'default') {
@@ -2174,10 +2175,9 @@ function pedirPermissaoNotificacoes() {
 window.pedirPermissaoNotificacoes = pedirPermissaoNotificacoes;
 
 (function() {
-  var notasStr = JSON.stringify(NOTAS_VERSAO);
-  var notasVistas = localStorage.getItem('appNotasVistas');
-  
-  if (NOTAS_VERSAO && NOTAS_VERSAO.length > 0 && notasStr !== notasVistas) {
+  var tsVistas = localStorage.getItem('appNotasVistasTimestamp');
+
+  if (NOTAS_VERSAO && NOTAS_VERSAO.length > 0 && NOTAS_VERSAO_TIMESTAMP !== tsVistas) {
     mostrarChangelog();
     
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -2271,7 +2271,7 @@ function mostrarChangelog() {
 
 function fecharChangelog() {
   document.getElementById('changelog-overlay').style.display = 'none';
-  localStorage.setItem('appNotasVistas', JSON.stringify(NOTAS_VERSAO));
+  localStorage.setItem('appNotasVistasTimestamp', NOTAS_VERSAO_TIMESTAMP);
   if (window.pedirPermissaoNotificacoes) window.pedirPermissaoNotificacoes();
 }
 
