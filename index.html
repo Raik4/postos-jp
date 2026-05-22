@@ -808,6 +808,13 @@ select {
 .sug-posto small { color: #8892a4; font-size:11px; display:block; }
 .sug-posto .fa-gas-pump { color:#f5a623; margin-right:4px; }
 
+.sug-cliente {
+  background: rgba(64, 153, 255, 0.08);
+  border-left: 3px solid #4099ff;
+}
+.sug-cliente small { color: #8892a4; font-size:11px; display:block; }
+.sug-cliente .fa-building { color:#4099ff; margin-right:4px; }
+
 #btn-localizacao {
   background: #0f3460;
   border: 1px solid #2a4a7f;
@@ -821,6 +828,86 @@ select {
 }
 #btn-localizacao:hover  { background: #1a4570; }
 #btn-localizacao:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#btn-pi {
+  background: #4099ff; color: #fff; border: none; border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  cursor: pointer; box-shadow: 0 2px 6px rgba(64,153,255,0.4);
+  display: flex; align-items: center; gap: 6px;
+}
+#btn-pi:hover { background: #2080e0; }
+
+#pi-overlay {
+  display: none; position: fixed; top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.7); z-index: 2000;
+  align-items: flex-start; justify-content: center; padding-top: 60px;
+}
+#pi-overlay.ativo { display: flex; }
+#pi-box {
+  background: #1a1a2e; border: 2px solid #4099ff; border-radius: 10px;
+  width: 92%; max-width: 480px; padding: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6); max-height: calc(100vh - 80px);
+  display: flex; flex-direction: column;
+}
+#pi-box h3 {
+  margin: 0 0 12px 0; color: #4099ff; font-size: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.pi-fechar { margin-left: auto; cursor: pointer; color: #8892a4; font-size: 18px; }
+.pi-fechar:hover { color: #f0f0f0; }
+#pi-search {
+  width: 100%; box-sizing: border-box; background: #0f3460;
+  border: 1px solid #2a4a7f; border-radius: 6px;
+  color: #f0f0f0; padding: 9px 12px; font-size: 14px; outline: none;
+}
+#pi-resultados {
+  margin-top: 10px; overflow-y: auto; flex: 1;
+}
+.pi-result {
+  background: rgba(64, 153, 255, 0.06); border-left: 3px solid #4099ff;
+  padding: 10px 12px; margin-bottom: 6px; border-radius: 4px;
+  cursor: pointer; font-size: 13px;
+}
+.pi-result:hover { background: rgba(64, 153, 255, 0.15); }
+.pi-result strong { color: #f0f0f0; }
+.pi-result small { display: block; color: #8892a4; font-size: 11px; margin-top: 2px; }
+.pi-result-vazio { color: #8892a4; font-size: 13px; text-align: center; padding: 20px; }
+
+.cliente-btn-destino {
+  display: inline-block; background: #f5a623; color: #1a1a2e;
+  border: none; padding: 6px 12px; border-radius: 4px;
+  font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 8px;
+}
+.cliente-btn-destino:hover { background: #d4901c; }
+
+/* Botão "Definir Destino" no popup (estilo igual a .pop-gmaps mas laranja sólido) */
+.pop-btn-destino {
+  display: block; width: 100%; box-sizing: border-box;
+  background: #f5a623; color: #1a1a2e; border: none;
+  padding: 8px 12px; border-radius: 5px; font-size: 13px;
+  font-weight: 700; cursor: pointer; margin-top: 6px;
+  text-align: center; text-decoration: none;
+}
+.pop-btn-destino:hover { background: #d4901c; }
+
+/* Botão "Remover do mapa" — discreto, com hover a vermelho */
+.pop-btn-remover {
+  display: block; width: 100%; box-sizing: border-box;
+  background: transparent; color: #8892a4;
+  border: 1px solid #2a4a7f; padding: 6px 12px;
+  border-radius: 5px; font-size: 12px; cursor: pointer;
+  margin-top: 4px; text-align: center;
+}
+.pop-btn-remover:hover { background: rgba(233,69,96,0.15); color: #e94560; border-color: #e94560; }
+
+/* Diferenciação dos resultados PI: postos vs clientes */
+.pi-result-posto   { background: rgba(245, 166, 35, 0.06); border-left: 3px solid #f5a623; }
+.pi-result-posto:hover   { background: rgba(245, 166, 35, 0.15); }
+.pi-result-posto .fa-gas-pump { color: #f5a623; margin-right: 4px; }
+
+.pi-result-cliente { background: rgba(64, 153, 255, 0.06); border-left: 3px solid #4099ff; }
+.pi-result-cliente:hover { background: rgba(64, 153, 255, 0.15); }
+.pi-result-cliente .fa-building { color: #4099ff; margin-right: 4px; }
 </style>
 </head>
 <body>
@@ -848,6 +935,7 @@ select {
 </div>
 
 <div id="header">
+  <button id="btn-pi" onclick="abrirPI()" title="Pontos de Interesse"><i class="fa fa-building"></i> PI</button>
   <div class="logo">GRUPO <span>JOÃO PIRES</span></div>
   <div class="sep"></div>
   <div class="fg">
@@ -877,7 +965,7 @@ select {
 </div>
 
 <button id="btn-emerg" onclick="abrirModal()">
-  <i class="fa fa-triangle-exclamation"></i> Não passo em nenhum posto autorizado
+  <i class="fa fa-magnifying-glass"></i> Encontrar Posto / Calcular Combustível
 </button>
 
 <div id="legenda">
@@ -1292,6 +1380,7 @@ function criarPopup(p, especial) {
     +'<div class="pop-linha"><b>Morada:</b> '+p.direcao+'</div>'
     +'<div class="pop-linha"><b>Prioridade:</b> <span class="pop-badge" style="background:'+cor+'22;color:'+cor+';border:1px solid '+cor+'">'+p.prioridade.toUpperCase()+'</span></div>'
     +'<a href="'+gmaps+'" target="_blank" class="pop-gmaps">📍 Google Maps</a>'
+    +'<button class="pop-btn-destino" onclick="definirDestinoXY(\''+(p.posto||'').replace(/\x27/g, "\\\x27")+'\','+p.lat+','+p.lon+')">Definir Destino</button>'
     +'</div>';
 }
 
@@ -1385,6 +1474,7 @@ function limparModal() {
   document.getElementById('chk-combustivel').checked = false;
   document.getElementById('combustivel-inputs').style.display = 'none';
   document.getElementById('combustivel-resultado').style.display = 'none';
+  if (window._atualizarTextoBotaoCalc) window._atualizarTextoBotaoCalc();
   document.getElementById('msg-erro').style.display = 'none';
   limparWaypoints();
   document.getElementById('input-origem').focus();
@@ -1434,6 +1524,17 @@ function _buscarPostosLocais(txt) {
     })
     .slice(0, 5);
 }
+function _buscarClientesLocais(txt) {
+  var q = _normalizarTxt(txt);
+  if (q.length < 2) return [];
+  var lista = (typeof CLIENTES !== 'undefined') ? CLIENTES : [];
+  return lista
+    .filter(function(c) {
+      return _normalizarTxt(c.cliente).indexOf(q) !== -1
+          || _normalizarTxt(c.morada || '').indexOf(q) !== -1;
+    })
+    .slice(0, 5);
+}
 function buscarSugestoes(txt,inp,lst) {
   lst.innerHTML = '';
   // 1) Postos locais primeiro
@@ -1446,6 +1547,20 @@ function buscarSugestoes(txt,inp,lst) {
       inp.value = p.posto;
       inp.dataset.lat = p.lat;
       inp.dataset.lon = p.lon;
+      lst.classList.remove('vis');
+    });
+    lst.appendChild(div);
+  });
+  // 2) Clientes (PI)
+  _buscarClientesLocais(txt).forEach(function(c) {
+    var div = document.createElement('div');
+    div.className = 'sug-item sug-cliente';
+    div.innerHTML = '<i class="fa fa-building"></i> <strong>' + c.cliente + '</strong>'
+                  + (c.morada ? '<small>' + c.morada + '</small>' : '');
+    div.addEventListener('mousedown', function() {
+      inp.value = c.cliente;
+      inp.dataset.lat = c.lat;
+      inp.dataset.lon = c.lon;
       lst.classList.remove('vis');
     });
     lst.appendChild(div);
@@ -1506,6 +1621,123 @@ function usarPosicaoAtual() {
   );
 }
 window.usarPosicaoAtual = usarPosicaoAtual;
+// ── BOTÃO PI / PESQUISA DE CLIENTES ─────────────────────
+var _marcadorClienteSelecionado = null;
+
+function abrirPI() {
+  document.getElementById('pi-overlay').classList.add('ativo');
+  var inp = document.getElementById('pi-search');
+  inp.value = '';
+  _renderPIResultados('');
+  setTimeout(function() { inp.focus(); }, 80);
+}
+function fecharPI() {
+  document.getElementById('pi-overlay').classList.remove('ativo');
+}
+function _renderPIResultados(txt) {
+  var box = document.getElementById('pi-resultados');
+  box.innerHTML = '';
+  var clientes = (typeof CLIENTES !== 'undefined') ? CLIENTES : [];
+  var postos = (typeof POSTOS_VISIVEIS !== 'undefined') ? POSTOS_VISIVEIS : [];
+  if (!txt || txt.trim().length < 1) {
+    box.innerHTML = '<div class="pi-result-vazio">Escreve para procurar (' + postos.length + ' postos + ' + clientes.length + ' clientes)</div>';
+    return;
+  }
+  var q = _normalizarTxt(txt);
+  var matchPostos = postos.filter(function(p) {
+    return _normalizarTxt(p.posto).indexOf(q) !== -1
+        || _normalizarTxt(p.direcao||'').indexOf(q) !== -1;
+  }).slice(0, 30);
+  var matchClientes = clientes.filter(function(c) {
+    return _normalizarTxt(c.cliente).indexOf(q) !== -1
+        || _normalizarTxt(c.morada||'').indexOf(q) !== -1;
+  }).slice(0, 30);
+  if (matchPostos.length === 0 && matchClientes.length === 0) {
+    box.innerHTML = '<div class="pi-result-vazio">Sem resultados para "' + txt + '".</div>';
+    return;
+  }
+  matchPostos.forEach(function(p) {
+    var div = document.createElement('div');
+    div.className = 'pi-result pi-result-posto';
+    div.innerHTML = '<i class="fa fa-gas-pump"></i> <strong>' + p.posto + '</strong>'
+                  + (p.direcao ? '<small>' + p.direcao + '</small>' : '');
+    div.addEventListener('click', function() { _selecionarItemPI(p, 'posto'); });
+    box.appendChild(div);
+  });
+  matchClientes.forEach(function(c) {
+    var div = document.createElement('div');
+    div.className = 'pi-result pi-result-cliente';
+    div.innerHTML = '<i class="fa fa-building"></i> <strong>' + c.cliente + '</strong>'
+                  + (c.morada ? '<small>' + c.morada + '</small>' : '');
+    div.addEventListener('click', function() { _selecionarItemPI(c, 'cliente'); });
+    box.appendChild(div);
+  });
+}
+function _selecionarItemPI(item, tipo) {
+  fecharPI();
+  if (_marcadorClienteSelecionado) {
+    mapa.removeLayer(_marcadorClienteSelecionado);
+    _marcadorClienteSelecionado = null;
+  }
+  var lat = item.lat, lon = item.lon;
+  var popupHtml, iconHtml;
+  var btnRemover = '<button class="pop-btn-remover" onclick="limparPinoSelecionado()">Remover do mapa</button>';
+  if (tipo === 'posto') {
+    popupHtml = criarPopup(item, false);
+    // Acrescentar botão de remover antes do </div> final
+    popupHtml = popupHtml.replace(/<\/div>$/, btnRemover + '</div>');
+    iconHtml = '<i class="fa fa-gas-pump" style="color:#f5a623;font-size:28px;text-shadow:0 0 4px rgba(0,0,0,0.8),0 0 2px #fff;"></i>';
+  } else {
+    var nomeEsc = (item.cliente||'').replace(/'/g, "\\'");
+    var gmaps = 'https://www.google.com/maps/search/?api=1&query='+lat+','+lon;
+    popupHtml = '<div style="width:200px;">'
+      + '<div class="pop-titulo" style="color:#4099ff;">' + item.cliente + '</div>'
+      + (item.morada ? '<div class="pop-linha"><b>Morada:</b> ' + item.morada + '</div>' : '')
+      + (item.notas ? '<div class="pop-linha" style="font-style:italic;">' + item.notas + '</div>' : '')
+      + '<a href="' + gmaps + '" target="_blank" class="pop-gmaps">📍 Google Maps</a>'
+      + '<button class="pop-btn-destino" onclick="definirDestinoXY(\'' + nomeEsc + '\',' + lat + ',' + lon + ')">Definir Destino</button>'
+      + btnRemover
+      + '</div>';
+    iconHtml = '<i class="fa fa-building" style="color:#4099ff;font-size:28px;text-shadow:0 0 4px rgba(0,0,0,0.8),0 0 2px #fff;"></i>';
+  }
+  _marcadorClienteSelecionado = L.marker([lat, lon], {
+    icon: L.divIcon({
+      className: 'pi-marker',
+      html: iconHtml,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    })
+  }).addTo(mapa).bindPopup(popupHtml, {maxWidth: 230}).openPopup();
+  mapa.setView([lat, lon], 13);
+}
+function definirDestinoXY(nome, lat, lon) {
+  if (_marcadorClienteSelecionado) _marcadorClienteSelecionado.closePopup();
+  abrirModal();
+  var inp = document.getElementById('input-destino');
+  inp.value = nome;
+  inp.dataset.lat = lat;
+  inp.dataset.lon = lon;
+}
+function limparPinoSelecionado() {
+  if (_marcadorClienteSelecionado) {
+    mapa.removeLayer(_marcadorClienteSelecionado);
+    _marcadorClienteSelecionado = null;
+  }
+}
+
+window.abrirPI = abrirPI;
+window.fecharPI = fecharPI;
+window.definirDestinoXY = definirDestinoXY;
+window.limparPinoSelecionado = limparPinoSelecionado;
+window._renderPIResultados = _renderPIResultados;
+
+// Event delegation no document — robusto independentemente da ordem de parse do DOM
+document.addEventListener('input', function(e) {
+  if (e.target && e.target.id === 'pi-search') {
+    _renderPIResultados(e.target.value);
+  }
+});
+
 function geocodificar(inputId) {
   var inp=document.getElementById(inputId);
   if(inp.dataset.lat&&inp.dataset.lon) return Promise.resolve({lat:parseFloat(inp.dataset.lat),lon:parseFloat(inp.dataset.lon)});
@@ -1682,6 +1914,17 @@ function calcularTrajeto(){
     msgErro.style.display='block'; return;
   }
 
+  // Se a checkbox de combustível está ligada, peso é obrigatório
+  if (document.getElementById('chk-combustivel').checked) {
+    var _pesoInp = document.getElementById('input-peso-carga').value.trim();
+    if (_pesoInp === '' || isNaN(parseFloat(_pesoInp))) {
+      msgErro.textContent = '⚠ Indica o peso da carga para calcular o combustível.';
+      msgErro.style.display = 'block';
+      document.getElementById('input-peso-carga').focus();
+      return;
+    }
+  }
+
   btnCalc.disabled=true;
   btnCalc.innerHTML='<i class="fa fa-spinner fa-spin"></i> A calcular...';
 
@@ -1791,7 +2034,8 @@ function calcularTrajeto(){
     msgErro.style.display='block';
   }).finally(function(){
     btnCalc.disabled=false;
-    btnCalc.innerHTML='<i class="fa fa-magnifying-glass"></i> Encontrar Postos';
+    if (window._atualizarTextoBotaoCalc) window._atualizarTextoBotaoCalc();
+    else btnCalc.innerHTML='<i class="fa fa-magnifying-glass"></i> Encontrar Postos';
   });
 }
 
@@ -1815,6 +2059,10 @@ var HISTORICO = {"1": [{"ano": 2026, "media": 41.9, "media_consumo": 36.7, "medi
 // Lookup: VIATURAS_GRUPOS[matricula] → "Volvo|6E|Aero" → COEFICIENTES_MODELO[...]
 var COEFICIENTES_MODELO = {"MAN|6D|N/D": {"intercept": 4.1275, "coef_peso": 0.5125, "coef_subida": 0.716, "peso_mediano": 30.9, "subida_mediana": 13.33, "sigma_residuo": 0.98, "r2": 0.74, "n_registos": 525, "n_viaturas": 21, "confianca": "Alta"}, "MAN|6E|N/D": {"intercept": 4.0677, "coef_peso": 0.5125, "coef_subida": 0.716, "peso_mediano": 29.8, "subida_mediana": 13.0, "sigma_residuo": 1.342, "r2": 0.74, "n_registos": 71, "n_viaturas": 6, "confianca": "Média"}, "Mercedes|5|N/D": {"intercept": 16.5289, "coef_peso": 0.1542, "coef_subida": 0.2211, "peso_mediano": 25.0, "subida_mediana": 9.24, "sigma_residuo": 1.509, "r2": 0.67, "n_registos": 167, "n_viaturas": 8, "confianca": "Média"}, "Mercedes|6D|N/D": {"intercept": 15.3664, "coef_peso": 0.1542, "coef_subida": 0.2211, "peso_mediano": 24.0, "subida_mediana": 8.87, "sigma_residuo": 1.515, "r2": 0.67, "n_registos": 177, "n_viaturas": 21, "confianca": "Alta"}, "Mercedes|6E|2ª G": {"intercept": 14.753, "coef_peso": 0.1542, "coef_subida": 0.2211, "peso_mediano": 29.0, "subida_mediana": 6.16, "sigma_residuo": 1.195, "r2": 0.67, "n_registos": 363, "n_viaturas": 13, "confianca": "Alta"}, "Mercedes|6E|3ª G": {"intercept": 14.078, "coef_peso": 0.1542, "coef_subida": 0.2211, "peso_mediano": 29.0, "subida_mediana": 6.23, "sigma_residuo": 1.633, "r2": 0.67, "n_registos": 1054, "n_viaturas": 38, "confianca": "Alta"}, "Renault|6B|N/D": {"intercept": -32.9816, "coef_peso": 3.2026, "coef_subida": 0.7912, "peso_mediano": 25.49, "subida_mediana": 68.04, "sigma_residuo": 4.812, "r2": 0.466, "n_registos": 363, "n_viaturas": 10, "confianca": "Média"}, "Renault|6C|N/D": {"intercept": -32.6662, "coef_peso": 3.2026, "coef_subida": 0.7912, "peso_mediano": 26.98, "subida_mediana": 67.51, "sigma_residuo": 4.999, "r2": 0.466, "n_registos": 226, "n_viaturas": 6, "confianca": "Média"}, "Renault|6E|N/D": {"intercept": -36.6005, "coef_peso": 3.2026, "coef_subida": 0.7912, "peso_mediano": 28.57, "subida_mediana": 72.63, "sigma_residuo": 2.003, "r2": 0.466, "n_registos": 40, "n_viaturas": 1, "confianca": "Baixa"}, "Scania|6C|N/D": {"intercept": 22.6299, "coef_peso": 0.26, "coef_subida": null, "peso_mediano": 22.86, "subida_mediana": null, "sigma_residuo": 1.089, "r2": 0.155, "n_registos": 12, "n_viaturas": 1, "confianca": "Baixa"}, "Volvo|6C|N/D": {"intercept": 11.16, "coef_peso": 0.4906, "coef_subida": 0.2737, "peso_mediano": 27.8, "subida_mediana": 9.34, "sigma_residuo": 1.774, "r2": 0.807, "n_registos": 632, "n_viaturas": 16, "confianca": "Alta"}, "Volvo|6D|N/D": {"intercept": 10.5721, "coef_peso": 0.4906, "coef_subida": 0.2737, "peso_mediano": 26.2, "subida_mediana": 9.43, "sigma_residuo": 1.299, "r2": 0.807, "n_registos": 160, "n_viaturas": 4, "confianca": "Média"}, "Volvo|6E|Aero": {"intercept": 8.8024, "coef_peso": 0.4906, "coef_subida": 0.2737, "peso_mediano": 26.66, "subida_mediana": 8.22, "sigma_residuo": 4.609, "r2": 0.807, "n_registos": 276, "n_viaturas": 42, "confianca": "Alta"}, "Volvo|6E|Barcos": {"intercept": 11.8435, "coef_peso": 0.4906, "coef_subida": 0.2737, "peso_mediano": 14.65, "subida_mediana": 7.77, "sigma_residuo": 9.195, "r2": 0.807, "n_registos": 26, "n_viaturas": 2, "confianca": "Baixa"}, "Volvo|6E|Cx (F)": {"intercept": 9.9734, "coef_peso": 0.4906, "coef_subida": 0.2737, "peso_mediano": 25.06, "subida_mediana": 8.48, "sigma_residuo": 1.444, "r2": 0.807, "n_registos": 1195, "n_viaturas": 30, "confianca": "Alta"}, "Volvo|6E|Cx (G)": {"intercept": 9.331, "coef_peso": 0.4906, "coef_subida": 0.2737, "peso_mediano": 26.22, "subida_mediana": 8.27, "sigma_residuo": 3.326, "r2": 0.807, "n_registos": 712, "n_viaturas": 20, "confianca": "Alta"}};
 var VIATURAS_GRUPOS = {"00-ZC-02": "Mercedes|6D|N/D", "00-ZC-05": "Mercedes|6D|N/D", "00-ZC-07": "Mercedes|6D|N/D", "00-ZC-19": "Mercedes|6D|N/D", "00-ZC-20": "Mercedes|6D|N/D", "00-ZC-21": "Mercedes|6D|N/D", "00-ZC-26": "Mercedes|6D|N/D", "00-ZC-27": "Mercedes|6D|N/D", "00-ZC-29": "Mercedes|6D|N/D", "00-ZC-30": "Mercedes|6D|N/D", "00-ZC-40": "Mercedes|6D|N/D", "0394LTX": "Volvo|6E|Cx (F)", "05-NO-91": "Mercedes|5|N/D", "06-NO-03": "Mercedes|5|N/D", "08-UC-02": "Volvo|6C|N/D", "08-UC-03": "Volvo|6C|N/D", "08-UC-04": "Volvo|6C|N/D", "08-UC-05": "Volvo|6C|N/D", "08-UC-09": "Volvo|6C|N/D", "08-UC-11": "Volvo|6C|N/D", "08-UC-12": "Volvo|6C|N/D", "08-UC-17": "Volvo|6C|N/D", "08-UC-20": "Volvo|6C|N/D", "08-UC-21": "Volvo|6C|N/D", "09-TA-69": "Volvo|6C|N/D", "09-TA-70": "Volvo|6C|N/D", "09-TA-71": "Volvo|6C|N/D", "10-US-24": "Scania|6C|N/D", "14-UC-53": "Volvo|6C|N/D", "14-UC-59": "Volvo|6C|N/D", "14-UC-61": "Volvo|6C|N/D", "16-SZ-82": "Mercedes|6D|N/D", "18-NM-04": "Mercedes|5|N/D", "30-QV-77": "Renault|6B|N/D", "44-XI-63": "Volvo|6D|N/D", "44-XI-69": "Volvo|6D|N/D", "5063JMG": "Renault|6C|N/D", "51-QB-71": "Renault|6B|N/D", "51-QB-73": "Renault|6B|N/D", "51-QB-74": "Renault|6B|N/D", "51-QB-76": "Renault|6B|N/D", "51-QB-77": "Renault|6B|N/D", "6223MGX": "Volvo|6E|Cx (G)", "6504LTX": "Volvo|6E|Cx (F)", "6677MGX": "Volvo|6E|Cx (G)", "70-QI-15": "Renault|6B|N/D", "70-QI-16": "Renault|6B|N/D", "7402JMF": "Renault|6C|N/D", "78-TJ-93": "Renault|6C|N/D", "78-TJ-94": "Renault|6C|N/D", "78-TJ-95": "Renault|6C|N/D", "78-TJ-97": "Renault|6C|N/D", "79-NP-31": "Mercedes|5|N/D", "79-NP-34": "Mercedes|5|N/D", "79-NP-35": "Mercedes|5|N/D", "79-NP-36": "Mercedes|5|N/D", "79-NP-37": "Mercedes|5|N/D", "79-QI-73": "Renault|6B|N/D", "79-QI-74": "Renault|6B|N/D", "8578MVC": "MAN|6E|N/D", "9470LTX": "Volvo|6E|Cx (F)", "99-ZB-74": "Mercedes|6D|N/D", "99-ZB-75": "Mercedes|6D|N/D", "99-ZB-76": "Mercedes|6D|N/D", "99-ZB-79": "Mercedes|6D|N/D", "99-ZB-83": "Mercedes|6D|N/D", "99-ZB-85": "Mercedes|6D|N/D", "99-ZB-86": "Mercedes|6D|N/D", "99-ZB-89": "Mercedes|6D|N/D", "99-ZB-96": "Mercedes|6D|N/D", "AC-23-PE": "Volvo|6D|N/D", "AC-24-PE": "Volvo|6D|N/D", "AD-17-MF": "MAN|6D|N/D", "AD-18-MF": "MAN|6D|N/D", "AD-19-MF": "MAN|6D|N/D", "AD-20-MF": "MAN|6D|N/D", "AD-21-MF": "MAN|6D|N/D", "AD-22-MF": "MAN|6D|N/D", "AD-23-MF": "MAN|6D|N/D", "AD-24-MF": "MAN|6D|N/D", "AD-25-MF": "MAN|6D|N/D", "AD-26-MF": "MAN|6D|N/D", "AD-27-MF": "MAN|6D|N/D", "AD-28-MF": "MAN|6D|N/D", "AD-29-MF": "MAN|6D|N/D", "AD-30-MF": "MAN|6D|N/D", "AD-31-MF": "MAN|6D|N/D", "AD-32-MF": "MAN|6D|N/D", "AD-33-MF": "MAN|6D|N/D", "AD-34-MF": "MAN|6D|N/D", "AD-35-MF": "MAN|6D|N/D", "AD-36-MF": "MAN|6D|N/D", "AD-37-MF": "MAN|6D|N/D", "AL-08-BN": "Volvo|6E|Cx (F)", "AL-09-BN": "Volvo|6E|Cx (F)", "AL-10-BN": "Volvo|6E|Cx (F)", "AL-11-BN": "Volvo|6E|Cx (F)", "AL-12-BN": "Volvo|6E|Cx (F)", "AL-13-BN": "Volvo|6E|Cx (F)", "AL-14-BN": "Volvo|6E|Cx (F)", "AL-15-BN": "Volvo|6E|Cx (F)", "AL-16-BN": "Volvo|6E|Cx (F)", "AL-17-BN": "Volvo|6E|Cx (F)", "AL-18-BN": "Volvo|6E|Cx (F)", "AL-19-BN": "Volvo|6E|Cx (F)", "AN-36-HE": "Renault|6E|N/D", "AO-15-BL": "Volvo|6E|Cx (F)", "AQ-73-EA": "Volvo|6E|Cx (F)", "AQ-81-CT": "Volvo|6E|Cx (F)", "AQ-83-CT": "Volvo|6E|Cx (F)", "AQ-84-CT": "Volvo|6E|Cx (F)", "AQ-92-CT": "Volvo|6E|Cx (F)", "AQ-95-CT": "Volvo|6E|Cx (F)", "AR-47-FR": "Volvo|6E|Cx (F)", "AR-48-FR": "Volvo|6E|Cx (F)", "AR-49-FR": "Volvo|6E|Cx (F)", "AR-50-FR": "Volvo|6E|Cx (F)", "AR-51-FR": "Volvo|6E|Cx (F)", "AR-52-FR": "Volvo|6E|Cx (F)", "AR-53-FR": "Volvo|6E|Cx (F)", "AR-54-FR": "Volvo|6E|Cx (F)", "AU-38-AS": "Mercedes|6E|2ª G", "AU-39-AS": "Mercedes|6E|2ª G", "AU-40-AS": "Mercedes|6E|2ª G", "AU-41-AS": "Mercedes|6E|2ª G", "AU-42-AS": "Mercedes|6E|2ª G", "AU-44-AS": "Mercedes|6E|2ª G", "AU-46-AS": "Mercedes|6E|2ª G", "AU-47-AS": "Mercedes|6E|2ª G", "AU-48-AS": "Mercedes|6E|2ª G", "AU-49-AS": "Mercedes|6E|2ª G", "AU-50-AS": "Mercedes|6E|2ª G", "AU-51-AS": "Mercedes|6E|2ª G", "AU-52-AS": "Mercedes|6E|2ª G", "AX-06-CS": "Mercedes|6E|3ª G", "AX-07-CS": "Mercedes|6E|3ª G", "AX-09-CS": "Mercedes|6E|3ª G", "AX-11-CS": "Mercedes|6E|3ª G", "AX-14-CS": "Mercedes|6E|3ª G", "AX-16-CS": "Mercedes|6E|3ª G", "AX-17-CS": "Mercedes|6E|3ª G", "AX-18-CS": "Mercedes|6E|3ª G", "AX-24-CS": "Mercedes|6E|3ª G", "AZ-74-LG": "Mercedes|6E|3ª G", "AZ-75-LG": "Mercedes|6E|3ª G", "AZ-76-LG": "Mercedes|6E|3ª G", "AZ-77-LG": "Mercedes|6E|3ª G", "AZ-80-HE": "Volvo|6E|Cx (G)", "AZ-81-HE": "Volvo|6E|Cx (G)", "AZ-82-HE": "Volvo|6E|Cx (G)", "AZ-83-HE": "Volvo|6E|Cx (G)", "AZ-84-HE": "Volvo|6E|Cx (G)", "AZ-85-HE": "Volvo|6E|Cx (G)", "AZ-86-HE": "Volvo|6E|Cx (G)", "AZ-87-HE": "Volvo|6E|Cx (G)", "BA-18-NP": "Volvo|6E|Cx (G)", "BA-19-NP": "Volvo|6E|Cx (G)", "BA-20-NP": "Volvo|6E|Cx (G)", "BA-21-NP": "Volvo|6E|Cx (G)", "BA-22-NP": "Volvo|6E|Cx (G)", "BA-23-NP": "Volvo|6E|Cx (G)", "BA-24-NP": "Volvo|6E|Cx (G)", "BA-25-NP": "Volvo|6E|Cx (G)", "BA-26-NP": "Volvo|6E|Cx (G)", "BA-27-NP": "Volvo|6E|Cx (G)", "BA-44-RX": "Mercedes|6E|3ª G", "BA-45-RX": "Mercedes|6E|3ª G", "BA-46-RX": "Mercedes|6E|3ª G", "BA-47-RX": "Mercedes|6E|3ª G", "BA-49-RX": "Mercedes|6E|3ª G", "BA-50-RX": "Mercedes|6E|3ª G", "BA-51-RX": "Mercedes|6E|3ª G", "BA-52-RX": "Mercedes|6E|3ª G", "BA-53-RX": "Mercedes|6E|3ª G", "BA-54-RX": "Mercedes|6E|3ª G", "BA-55-RX": "Mercedes|6E|3ª G", "BA-56-RX": "Mercedes|6E|3ª G", "BA-57-RX": "Mercedes|6E|3ª G", "BA-58-RX": "Mercedes|6E|3ª G", "BA-59-RX": "Mercedes|6E|3ª G", "BD-45-QX": "Volvo|6E|Barcos", "BD-46-QX": "Volvo|6E|Barcos", "BD-89-BQ": "Mercedes|6E|3ª G", "BD-90-BQ": "Mercedes|6E|3ª G", "BD-91-BQ": "Mercedes|6E|3ª G", "BD-92-BQ": "Mercedes|6E|3ª G", "BD-93-BQ": "Mercedes|6E|3ª G", "BD-94-BQ": "Mercedes|6E|3ª G", "BD-95-BQ": "Mercedes|6E|3ª G", "BD-96-BQ": "Mercedes|6E|3ª G", "BD-97-BQ": "Mercedes|6E|3ª G", "BJ-33-ME": "Mercedes|6E|3ª G", "BP-15-NM": "Volvo|6E|Aero", "BP-16-NM": "Volvo|6E|Aero", "BP-18-NM": "Volvo|6E|Aero", "BP-19-NM": "Volvo|6E|Aero", "BP-20-NM": "Volvo|6E|Aero", "BQ-36-UC": "Volvo|6E|Aero", "BQ-37-UC": "Volvo|6E|Aero", "BQ-38-UC": "Volvo|6E|Aero", "BQ-39-UC": "Volvo|6E|Aero", "BQ-40-UC": "Volvo|6E|Aero", "BQ-41-UC": "Volvo|6E|Aero", "BQ-42-UC": "Volvo|6E|Aero", "BQ-43-UC": "Volvo|6E|Aero", "BQ-44-UC": "Volvo|6E|Aero", "BQ-45-UC": "Volvo|6E|Aero", "BS-43-JN": "MAN|6E|N/D", "BS-44-JN": "MAN|6E|N/D", "BS-45-JN": "MAN|6E|N/D", "BS-47-JN": "MAN|6E|N/D", "BS-48-JN": "MAN|6E|N/D", "CA-08-RT": "Volvo|6E|Aero", "CA-09-RT": "Volvo|6E|Aero", "CA-10-RT": "Volvo|6E|Aero", "CA-11-RT": "Volvo|6E|Aero", "CA-12-RT": "Volvo|6E|Aero", "CA-13-RT": "Volvo|6E|Aero", "CA-14-RT": "Volvo|6E|Aero", "CA-15-RT": "Volvo|6E|Aero", "CA-16-RT": "Volvo|6E|Aero", "CA-17-RT": "Volvo|6E|Aero", "CE-13-GQ": "Volvo|6E|Aero", "CE-14-GQ": "Volvo|6E|Aero", "CE-15-GQ": "Volvo|6E|Aero", "CE-16-GQ": "Volvo|6E|Aero", "CE-17-GQ": "Volvo|6E|Aero", "CE-18-GQ": "Volvo|6E|Aero", "CE-19-GQ": "Volvo|6E|Aero", "CE-20-GQ": "Volvo|6E|Aero", "CE-21-GQ": "Volvo|6E|Aero", "CE-22-GQ": "Volvo|6E|Aero", "CF-65-JP": "Volvo|6E|Aero", "CF-66-JP": "Volvo|6E|Aero", "CF-67-JP": "Volvo|6E|Aero", "CF-68-JP": "Volvo|6E|Aero", "CF-69-JP": "Volvo|6E|Aero", "CF-70-JP": "Volvo|6E|Aero", "CF-71-JP": "Volvo|6E|Aero", "CF-72-JP": "Volvo|6E|Aero", "CF-73-JP": "Volvo|6E|Aero", "CF-74-JP": "Volvo|6E|Aero"};
+
+// ── CLIENTES (PONTOS DE INTERESSE) ──────────────────────
+// Lista de clientes geocodificados a partir da aba 'Clientes' de Postos_JoaoPires.xlsx
+var CLIENTES = [{"cliente": "Stellantis Moulhouse", "morada": "Rue de Chalampé, 68390 Sausheim, France", "lat": 47.779122, "lon": 7.418777, "notas": null}, {"cliente": "Stellantis Vigo", "morada": "Rúa de Citroën, 3, Coia, 36210 Vigo, Pontevedra, Spain", "lat": 42.208586, "lon": -8.739132, "notas": null}, {"cliente": "Stellantis Mangualde", "morada": "Quinta do Bacelo, 3534-952 Mangualde", "lat": 40.60789, "lon": -7.7785, "notas": null}];
 
 // Limiares de classificação do perfil da rota (metros de subida acumulada / km)
 var SUBIDA_LIMIAR_MISTA    = 8;
@@ -2116,6 +2364,17 @@ window.voltarHistorico = voltarHistorico;
 window._hxSetView = _hxSetView;
 window._hxSetAno  = _hxSetAno;
 // ── UI DA CALCULADORA DE COMBUSTÍVEL ────────────────────
+function _atualizarTextoBotaoCalc() {
+  var btn = document.getElementById('btn-calc');
+  if (!btn) return;
+  var chk = document.getElementById('chk-combustivel');
+  var comComb = chk && chk.checked;
+  btn.innerHTML = comComb
+    ? '<i class="fa fa-magnifying-glass"></i> Encontrar Posto / Calcular Combustível'
+    : '<i class="fa fa-magnifying-glass"></i> Encontrar Postos';
+}
+window._atualizarTextoBotaoCalc = _atualizarTextoBotaoCalc;
+
 function toggleCalcCombustivel() {
   var chk = document.getElementById('chk-combustivel');
   var inputs = document.getElementById('combustivel-inputs');
@@ -2123,22 +2382,26 @@ function toggleCalcCombustivel() {
   if (resultado) resultado.style.display = 'none';
   if (!chk.checked) {
     inputs.style.display = 'none';
+    _atualizarTextoBotaoCalc();
     return;
   }
   var cod = localStorage.getItem('motoristaCodigo');
   var d = cod ? MOTORISTAS[parseInt(cod)] : null;
   if (!d || !d.matricula) {
     chk.checked = false;
+    _atualizarTextoBotaoCalc();
     alert('Sem viatura associada — não é possível calcular combustível.');
     return;
   }
   var grupo = VIATURAS_GRUPOS[d.matricula];
   if (!grupo || !COEFICIENTES_MODELO[grupo] || COEFICIENTES_MODELO[grupo].intercept == null) {
     chk.checked = false;
+    _atualizarTextoBotaoCalc();
     alert('Esta viatura ainda não tem modelo de previsão disponível.');
     return;
   }
   inputs.style.display = 'block';
+  _atualizarTextoBotaoCalc();
 }
 
 // Mapeamento perfil de rota → multiplicador × subida_mediana (escala interna por grupo)
@@ -2267,7 +2530,7 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO E NOTAS DE ALTERACAO
-var APP_VERSAO = '20260522160506';
+var APP_VERSAO = '20260522173955';
 var NOTAS_VERSAO = ["Alteração de Postos no serviço Nacional"];
 var NOTAS_VERSAO_TIMESTAMP = '0';
 
@@ -2424,5 +2687,13 @@ setTimeout(function() {
 }, 10000);
 }); // fim do window.load
 </script>
+
+<div id="pi-overlay" onclick="if(event.target===this)fecharPI()">
+  <div id="pi-box">
+    <h3><i class="fa fa-building"></i> Pontos de Interesse <i class="fa fa-xmark pi-fechar" onclick="fecharPI()"></i></h3>
+    <input type="text" id="pi-search" placeholder="Procurar cliente ou morada..." autocomplete="off"/>
+    <div id="pi-resultados"></div>
+  </div>
+</div>
 </body>
 </html>
