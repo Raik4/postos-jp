@@ -800,6 +800,27 @@ select {
 #combustivel-resultado .cr-litros  { font-size:24px; font-weight:700; color:#f0f0f0; }
 #combustivel-resultado .cr-detalhe { color:#8892a4; font-size:12px; margin-top:4px; }
 #combustivel-resultado .cr-aviso   { color:#f5a623; font-size:11px; margin-top:6px; }
+
+.sug-posto {
+  background: rgba(245, 166, 35, 0.08);
+  border-left: 3px solid #f5a623;
+}
+.sug-posto small { color: #8892a4; font-size:11px; display:block; }
+.sug-posto .fa-gas-pump { color:#f5a623; margin-right:4px; }
+
+#btn-localizacao {
+  background: #0f3460;
+  border: 1px solid #2a4a7f;
+  border-radius: 6px;
+  color: #f5a623;
+  padding: 4px 9px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+#btn-localizacao:hover  { background: #1a4570; }
+#btn-localizacao:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -992,7 +1013,7 @@ select {
     <h2><i class="fa fa-route" style="color:#f5a623;margin-right:6px;"></i>Definir Trajeto</h2>
     <p class="sub">Introduz origem e destino. Podes adicionar até 2 pontos intermédios para forçar a rota.</p>
     <div class="cg">
-      <label><i class="fa fa-location-dot"></i> Origem</label>
+      <label><i class="fa fa-location-dot"></i> Origem <button type="button" id="btn-localizacao" onclick="usarPosicaoAtual()" title="Usar a minha posição atual"><i class="fa fa-location-crosshairs"></i></button></label>
       <input type="text" id="input-origem" placeholder="Ex: Porto, Santander..."/>
       <div id="sug-origem" class="sug-lista"></div>
     </div>
@@ -1389,27 +1410,102 @@ function configurarAC(inputId, listaId) {
   inp.addEventListener('blur',function(){setTimeout(function(){lst.classList.remove('vis');},200);});
   inp.addEventListener('keydown',function(e){if(e.key==='Enter')calcularTrajeto();});
 }
+function _normalizarTxt(s) {
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function _postoCorrespondeAoFiltro(p) {
+  var elE = document.getElementById('sel-empresa');
+  var elS = document.getElementById('sel-servico');
+  var emp = elE ? elE.value : '';
+  var srv = elS ? elS.value : '';
+  if (emp && !p[emp]) return false;
+  if (srv && !p[srv]) return false;
+  return true;
+}
+function _buscarPostosLocais(txt) {
+  var q = _normalizarTxt(txt);
+  if (q.length < 2) return [];
+  var lista = (typeof POSTOS_VISIVEIS !== 'undefined') ? POSTOS_VISIVEIS : [];
+  return lista
+    .filter(_postoCorrespondeAoFiltro)
+    .filter(function(p) {
+      return _normalizarTxt(p.posto).indexOf(q) !== -1
+          || _normalizarTxt(p.direcao||'').indexOf(q) !== -1;
+    })
+    .slice(0, 5);
+}
 function buscarSugestoes(txt,inp,lst) {
-  var url='https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(txt)+'&limit=5';
-  fetch(url,{headers:{'Accept-Language':'pt-PT,pt,es,fr,en'}})
+  lst.innerHTML = '';
+  // 1) Postos locais primeiro
+  _buscarPostosLocais(txt).forEach(function(p) {
+    var div = document.createElement('div');
+    div.className = 'sug-item sug-posto';
+    div.innerHTML = '<i class="fa fa-gas-pump"></i> <strong>' + p.posto + '</strong>'
+                  + (p.direcao ? '<small>' + p.direcao + '</small>' : '');
+    div.addEventListener('mousedown', function() {
+      inp.value = p.posto;
+      inp.dataset.lat = p.lat;
+      inp.dataset.lon = p.lon;
+      lst.classList.remove('vis');
+    });
+    lst.appendChild(div);
+  });
+  if (lst.children.length) lst.classList.add('vis');
+  // 2) Nominatim (até 5 localidades depois)
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(txt) + '&limit=5';
+  fetch(url, {headers:{'Accept-Language':'pt-PT,pt,es,fr,en'}})
     .then(function(r){return r.json();})
     .then(function(d){
-      lst.innerHTML='';
-      if(!d.length){lst.classList.remove('vis');return;}
       d.forEach(function(item){
-        var nome=item.display_name.split(',').slice(0,3).join(', ');
-        var div=document.createElement('div');
-        div.className='sug-item'; div.textContent=nome;
-        div.addEventListener('mousedown',function(){
-          inp.value=nome; inp.dataset.lat=item.lat; inp.dataset.lon=item.lon;
+        var nome = item.display_name.split(',').slice(0,3).join(', ');
+        var div = document.createElement('div');
+        div.className = 'sug-item';
+        div.textContent = nome;
+        div.addEventListener('mousedown', function() {
+          inp.value = nome; inp.dataset.lat = item.lat; inp.dataset.lon = item.lon;
           lst.classList.remove('vis');
         });
         lst.appendChild(div);
       });
-      lst.classList.add('vis');
+      if (lst.children.length) lst.classList.add('vis');
+      else lst.classList.remove('vis');
     })
-    .catch(function(){lst.classList.remove('vis');});
+    .catch(function(){
+      if (!lst.children.length) lst.classList.remove('vis');
+    });
 }
+
+function usarPosicaoAtual() {
+  var inp = document.getElementById('input-origem');
+  var btn = document.getElementById('btn-localizacao');
+  var msgErro = document.getElementById('msg-erro');
+  if (!navigator.geolocation) {
+    msgErro.textContent = '⚠ Geolocalização não suportada neste browser.';
+    msgErro.style.display = 'block';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      inp.value = '📍 Posição atual';
+      inp.dataset.lat = pos.coords.latitude;
+      inp.dataset.lon = pos.coords.longitude;
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-location-crosshairs"></i>';
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-location-crosshairs"></i>';
+      var txt = '⚠ Não foi possível obter a tua localização.';
+      if (err && err.code === 1) txt += ' Permite acesso à localização e tenta de novo.';
+      msgErro.textContent = txt;
+      msgErro.style.display = 'block';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+window.usarPosicaoAtual = usarPosicaoAtual;
 function geocodificar(inputId) {
   var inp=document.getElementById(inputId);
   if(inp.dataset.lat&&inp.dataset.lon) return Promise.resolve({lat:parseFloat(inp.dataset.lat),lon:parseFloat(inp.dataset.lon)});
@@ -2159,7 +2255,7 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO E NOTAS DE ALTERACAO
-var APP_VERSAO = '20260522152623';
+var APP_VERSAO = '20260522154851';
 var NOTAS_VERSAO = ["Alteração de Postos no serviço Nacional"];
 var NOTAS_VERSAO_TIMESTAMP = '0';
 
