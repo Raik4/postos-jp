@@ -1,10 +1,21 @@
-/* Service Worker — Postos JP  v20260522114806 */
-var CACHE = 'postos-jp-20260522114806';
+/* Service Worker — Postos JP  v20260522142856 */
+var CACHE = 'postos-jp-20260522142856';
+var RESOURCES = ['./', 'index.html'];
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
   e.waitUntil(
-    caches.open(CACHE).then(function(c) { return c.add('./'); })
+    caches.open(CACHE).then(function(c) {
+      return Promise.all(
+        RESOURCES.map(function(url) {
+          return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now(), {cache: 'reload'})
+            .then(function(r) {
+              if (!r.ok) throw new Error('Falha ao descarregar ' + url);
+              return c.put(url, r);
+            });
+        })
+      );
+    })
   );
 });
 
@@ -22,13 +33,21 @@ self.addEventListener('activate', function(e) {
 self.addEventListener('fetch', function(e) {
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request, {cache: 'no-cache'})
-        .then(function(r) {
-          var clone = r.clone();
-          caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
-          return r;
-        })
-        .catch(function() { return caches.match(e.request); })
+      caches.match(e.request).then(function(cachedResponse) {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // Se não encontrar o URL específico (ex: com query params ou hash), tenta os padrões
+        var urlStr = e.request.url;
+        if (urlStr.indexOf('index.html') >= 0) {
+          return caches.match('index.html').then(function(r) {
+            return r || caches.match('./');
+          });
+        }
+        return caches.match('./').then(function(r) {
+          return r || fetch(e.request);
+        });
+      })
     );
   }
 });
