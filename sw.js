@@ -1,5 +1,5 @@
-/* Service Worker — Postos JP  v20260522114606 */
-var CACHE = 'postos-jp-20260522114606';
+/* Service Worker — Postos JP  v20260522114806 */
+var CACHE = 'postos-jp-20260522114806';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
