@@ -1,5 +1,5 @@
-/* Service Worker — Postos JP  v20260522142856 */
-var CACHE = 'postos-jp-20260522142856';
+/* Service Worker — Postos JP  v20260522150210 */
+var CACHE = 'postos-jp-20260522150210';
 var RESOURCES = ['./', 'index.html'];
 
 self.addEventListener('install', function(e) {
@@ -33,20 +33,22 @@ self.addEventListener('activate', function(e) {
 self.addEventListener('fetch', function(e) {
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      caches.match(e.request).then(function(cachedResponse) {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        // Se não encontrar o URL específico (ex: com query params ou hash), tenta os padrões
-        var urlStr = e.request.url;
-        if (urlStr.indexOf('index.html') >= 0) {
-          return caches.match('index.html').then(function(r) {
-            return r || caches.match('./');
-          });
-        }
-        return caches.match('./').then(function(r) {
-          return r || fetch(e.request);
-        });
+      caches.match(e.request, {ignoreSearch: true}).then(function(cachedResponse) {
+        return cachedResponse || fetch(e.request);
+      })
+    );
+  }
+});
+
+self.addEventListener('message', function(e) {
+  if (e.data && e.data.action === 'showNotification') {
+    e.waitUntil(
+      self.registration.showNotification(e.data.title, {
+        body: e.data.body,
+        icon: './favicon.ico',
+        badge: './favicon.ico',
+        tag: 'alteracao-postos',
+        renotify: true
       })
     );
   }
