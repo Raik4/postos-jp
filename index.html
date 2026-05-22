@@ -1700,6 +1700,18 @@ function calcularTrajeto(){
       return obterRota(coords, evitar, comComb).then(function(rota){
         if(!rota) throw new Error('Rota não calculada. Tenta novamente.');
 
+        // CALCULADORA DE COMBUSTÍVEL — só se a checkbox estava ligada
+        if (comComb && rota.dadosRota) {
+          var _cod = localStorage.getItem('motoristaCodigo');
+          var _d = _cod ? MOTORISTAS[parseInt(_cod)] : null;
+          if (_d && _d.matricula) {
+            var _pInp = document.getElementById('input-peso-carga').value;
+            var _pNum = _pInp.trim() === '' ? null : parseFloat(_pInp);
+            var _prev = preverCombustivel(_d.matricula, rota.dadosRota, _pNum);
+            if (_prev) renderResultadoCombustivel(_prev, rota);
+          }
+        }
+
       var ocultos=POSTOS_OCULTOS;
 
       marcadoresOcultos.forEach(function(m){mapa.removeLayer(m);});
@@ -2255,7 +2267,7 @@ window.mostrarInfoViatura = function() {
 verificarMotorista();
 
 // VERIFICACAO DE VERSAO E NOTAS DE ALTERACAO
-var APP_VERSAO = '20260522154851';
+var APP_VERSAO = '20260522160506';
 var NOTAS_VERSAO = ["Alteração de Postos no serviço Nacional"];
 var NOTAS_VERSAO_TIMESTAMP = '0';
 
@@ -2315,20 +2327,25 @@ window.pedirPermissaoNotificacoes = pedirPermissaoNotificacoes;
             b.innerHTML = '&#x1F504; A atualizar para a nova versão...';
             b.style.display = 'block';
           }
+          // Fallback agressivo: se 'controllerchange' não disparar em 4s, força reload à mão
+          var _forceReload = function() {
+            window.location.replace(window.location.pathname + '?v=' + Date.now() + window.location.hash);
+          };
+          var _fallback = setTimeout(_forceReload, 4000);
           if (navigator.serviceWorker) {
             navigator.serviceWorker.getRegistration().then(function(reg) {
               if (reg) {
                 reg.update().catch(function() {
-                  window.location.replace(window.location.pathname + '?v=' + Date.now() + window.location.hash);
+                  clearTimeout(_fallback); _forceReload();
                 });
               } else {
-                window.location.replace(window.location.pathname + '?v=' + Date.now() + window.location.hash);
+                clearTimeout(_fallback); _forceReload();
               }
             }).catch(function() {
-              window.location.replace(window.location.pathname + '?v=' + Date.now() + window.location.hash);
+              clearTimeout(_fallback); _forceReload();
             });
           } else {
-            window.location.replace(window.location.pathname + '?v=' + Date.now() + window.location.hash);
+            clearTimeout(_fallback); _forceReload();
           }
         }
         window.verificandoAtualizacao = false;
@@ -2338,11 +2355,11 @@ window.pedirPermissaoNotificacoes = pedirPermissaoNotificacoes;
       });
   }
   
-  // Executar 500ms após carregar
-  setTimeout(verificarAtualizacao, 500);
-  
-  // Executar periodicamente a cada 5 minutos
-  setInterval(verificarAtualizacao, 5 * 60 * 1000);
+  // Executar 200ms após carregar (mais cedo para apanhar updates pendentes)
+  setTimeout(verificarAtualizacao, 200);
+
+  // Executar periodicamente a cada 60 segundos (era 5 min — demorava demasiado a atualizar)
+  setInterval(verificarAtualizacao, 60 * 1000);
   
   // Executar sempre que a app volta a estar em primeiro plano
   document.addEventListener('visibilitychange', function() {
